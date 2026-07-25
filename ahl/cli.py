@@ -73,6 +73,8 @@ def main():
     gv_generate.add_argument("--output", help="Output video path")
     gv_generate.add_argument("--model", help="LLM model override")
     gv_generate.add_argument("--image-model", help="Image generation model override")
+    gv_generate.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "auto"], help="Image provider (default: openrouter)")
+    gv_generate.add_argument("--local-variant", default="schnell", choices=["schnell", "dev", "2-dev"], help="Local FLUX variant (default: schnell)")
     gv_generate.add_argument("--server", help="Gen-video server URL override")
     gv_generate.add_argument("--poll", action="store_true", help="Wait for completion and download")
     gv_generate.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
@@ -93,6 +95,8 @@ def main():
     gv_video.add_argument("--output", help="Output video path")
     gv_video.add_argument("--model", help="LLM model for script generation")
     gv_video.add_argument("--image-model", default="black-forest-labs/flux.2-pro", help="Image generation model")
+    gv_video.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "auto"], help="Image provider (default: openrouter)")
+    gv_video.add_argument("--local-variant", default="schnell", choices=["schnell", "dev", "2-dev"], help="Local FLUX variant (default: schnell)")
     gv_video.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
     gv_video.add_argument("--private", action="store_true", help="Set YouTube video to private")
 
@@ -190,6 +194,10 @@ def handle_gen_video(args):
             gv_args += ["--model", args.model]
         if args.image_model:
             gv_args += ["--image-model", args.image_model]
+        if args.provider:
+            gv_args += ["--provider", args.provider]
+        if args.local_variant:
+            gv_args += ["--local-variant", args.local_variant]
         if args.server:
             gv_args += ["--server", args.server]
         if args.poll:
@@ -229,6 +237,10 @@ def handle_gen_video(args):
             gv_args += ["--model", args.model]
         if args.image_model:
             gv_args += ["--image-model", args.image_model]
+        if args.provider:
+            gv_args += ["--provider", args.provider]
+        if args.local_variant:
+            gv_args += ["--local-variant", args.local_variant]
         if args.upload:
             gv_args += ["--upload"]
         if args.private:

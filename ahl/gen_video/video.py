@@ -312,7 +312,7 @@ Output format — return ONLY valid JSON, no markdown fences:
 
 
 def _generate_scene_image(scene_index, prompt, temp_dir, image_model):
-    """Generate an image for a single scene and download it to temp_dir.
+    """Generate an image for a single scene using OpenRouter and download it.
 
     Thread-safe — all state is local or passed in.
 
@@ -328,6 +328,33 @@ def _generate_scene_image(scene_index, prompt, temp_dir, image_model):
     placeholder = temp_dir / f"raw_scene_{scene_index:03d}.png"
     from PIL import Image as PILImage
 
+    bg = PILImage.new("RGB", (1080, 1920), (20, 20, 40))
+    bg.save(str(placeholder))
+    return (scene_index, str(placeholder))
+
+
+def _generate_scene_image_with_provider(scene_index, prompt, temp_dir, provider):
+    """Generate an image for a single scene using the given provider.
+
+    Args:
+        scene_index: Scene index.
+        prompt: Image generation prompt.
+        temp_dir: Temporary directory to save the image.
+        provider: An ImageProvider instance.
+
+    Returns:
+        (index: int, path: str) — the scene index and path to the downloaded image.
+    """
+    img_path = provider.generate_image(prompt, scene_index=scene_index)
+    if img_path and os.path.isfile(img_path):
+        # Move to temp_dir for consistent cleanup
+        dest = temp_dir / f"raw_scene_{scene_index:03d}.png"
+        import shutil
+        shutil.copy2(img_path, dest)
+        return (scene_index, str(dest))
+    # Fall through: create placeholder
+    placeholder = temp_dir / f"raw_scene_{scene_index:03d}.png"
+    from PIL import Image as PILImage
     bg = PILImage.new("RGB", (1080, 1920), (20, 20, 40))
     bg.save(str(placeholder))
     return (scene_index, str(placeholder))
@@ -480,6 +507,8 @@ def generate_video_from_content(
     model=None,
     image_model="black-forest-labs/flux.2-pro",
     verbose=True,
+    provider=None,
+    local_variant="schnell",
 ):
     """Run the full video generation pipeline from markdown content.
 
@@ -489,8 +518,10 @@ def generate_video_from_content(
         md_content: Markdown text (already stripped of frontmatter).
         output_path: Where to write the final .mp4.
         model: LLM model for script generation (default: $MODEL env var).
-        image_model: Image generation model.
+        image_model: Image generation model (for OpenRouter provider).
         verbose: If True, print progress to stdout.
+        provider: 'openrouter', 'local', or 'auto'. If None, uses OpenRouter.
+        local_variant: Which local FLUX variant ('schnell', 'dev', '2-dev').
 
     Returns:
         (success: bool, output_path: str or None, error_msg: str or None)
@@ -504,8 +535,24 @@ def generate_video_from_content(
     for i, s in enumerate(scenes):
         _p(f'  Scene {i + 1}: "{s.get("title", "")}" — {s.get("subtitle", "")[:60]}...')
 
-    # ── Step 2: Generate images via Flux (parallel) ─────────────────────────
-    _p("\nStep 2/3: Generating images via Flux (parallel)...")
+    # ── Step 2: Generate images via selected provider ──────────────────────
+    from ahl.gen_video.providers.factory import create_provider
+
+    image_provider = None
+    if provider and provider != "openrouter":
+        try:
+            image_provider = create_provider(
+                provider=provider,
+                model=image_model,
+                local_variant=local_variant,
+            )
+            _p(f"Using image provider: {image_provider.name} ({image_provider.model_name})")
+        except Exception as e:
+            _p(f"Warning: Could not create provider '{provider}': {e}")
+            _p("  Falling back to OpenRouter")
+            image_provider = None
+
+    _p(f"\nStep 2/3: Generating images...")
     temp_dir = Path(tempfile.mkdtemp(prefix="gen_video_"))
     raw_image_paths = []
 
@@ -519,9 +566,14 @@ def generate_video_from_content(
         for i in scene_indices:
             prompt = scenes[i].get("image_prompt", "")
             _p(f"  Submitting scene {i + 1}/{len(scenes)}: {prompt[:80]}...")
-            futures[
-                ex.submit(_generate_scene_image, i, prompt, temp_dir, image_model)
-            ] = i
+            if image_provider:
+                futures[
+                    ex.submit(_generate_scene_image_with_provider, i, prompt, temp_dir, image_provider)
+                ] = i
+            else:
+                futures[
+                    ex.submit(_generate_scene_image, i, prompt, temp_dir, image_model)
+                ] = i
 
         for future in as_completed(futures):
             i = futures[future]
@@ -742,6 +794,8 @@ def main():
         print(
             "  --image-model MODEL Image generation model (default: black-forest-labs/flux.2-pro)"
         )
+        print("  --provider PROVIDER Image provider: openrouter, local, auto (default: openrouter)")
+        print("  --local-variant VAR Local FLUX variant: schnell, dev, 2-dev (default: schnell)")
         print("  --upload            Upload generated video to YouTube after creation")
         print(
             "  --private           When uploading, set video to private (default: public)"
@@ -760,6 +814,8 @@ def main():
     output_path = None
     model = None
     image_model = "black-forest-labs/flux.2-pro"
+    provider = None
+    local_variant = "schnell"
     do_upload = False
     upload_private = False
 
@@ -773,6 +829,12 @@ def main():
             i += 2
         elif args[i] == "--image-model" and i + 1 < len(args):
             image_model = args[i + 1]
+            i += 2
+        elif args[i] == "--provider" and i + 1 < len(args):
+            provider = args[i + 1]
+            i += 2
+        elif args[i] == "--local-variant" and i + 1 < len(args):
+            local_variant = args[i + 1]
             i += 2
         elif args[i] == "--upload":
             do_upload = True
@@ -803,7 +865,8 @@ def main():
 
     # ── Run pipeline ───────────────────────────────────────────────────────
     success, out_path, error_msg = generate_video_from_content(
-        md_content, output_path, model=model, image_model=image_model, verbose=True
+        md_content, output_path, model=model, image_model=image_model, verbose=True,
+        provider=provider, local_variant=local_variant,
     )
 
     if not success:

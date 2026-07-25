@@ -43,6 +43,8 @@ def main():
     output_path = None
     model = None
     image_model = None
+    provider = "openrouter"
+    local_variant = "schnell"
     server_url = None
     do_poll = False
     do_upload = False
@@ -58,6 +60,12 @@ def main():
             i += 2
         elif args[i] == "--image-model" and i + 1 < len(args):
             image_model = args[i + 1]
+            i += 2
+        elif args[i] == "--provider" and i + 1 < len(args):
+            provider = args[i + 1]
+            i += 2
+        elif args[i] == "--local-variant" and i + 1 < len(args):
+            local_variant = args[i + 1]
             i += 2
         elif args[i] == "--server" and i + 1 < len(args):
             server_url = args[i + 1]
@@ -133,6 +141,10 @@ def main():
         payload["model"] = model
     if image_model:
         payload["image_model"] = image_model
+    if provider:
+        payload["provider"] = provider
+    if local_variant:
+        payload["local_variant"] = local_variant
     if do_upload:
         payload["upload"] = True
         payload["privacy"] = privacy
