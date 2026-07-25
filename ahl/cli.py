@@ -167,14 +167,15 @@ def main():
 def handle_gen_video_server(args):
     """Start the gen-video API server directly (top-level `ahl server`)."""
     from ahl.gen_video.server import main as gv_server
-    gv_args = ["ahl", "gen-video", "server"]
+    # The server's argparse only knows about --host, --port, --reload.
+    # Strip everything else from sys.argv so it doesn't choke on "gen-video" etc.
+    sys.argv = ["ahl"]
     if args.host:
-        gv_args += ["--host", args.host]
+        sys.argv += ["--host", args.host]
     if args.port:
-        gv_args += ["--port", str(args.port)]
+        sys.argv += ["--port", str(args.port)]
     if args.reload:
-        gv_args += ["--reload"]
-    sys.argv = gv_args
+        sys.argv += ["--reload"]
     gv_server()
 
 
@@ -186,66 +187,61 @@ def handle_gen_video(args):
 
     if action == "generate":
         from ahl.gen_video.generate import main as gv_generate
-        # Map ahl args to the generate module's sys.argv convention
-        gv_args = ["ahl", "gen-video", "generate"]
+        sys.argv = ["ahl"]
         if args.output:
-            gv_args += ["--output", args.output]
+            sys.argv += ["--output", args.output]
         if args.model:
-            gv_args += ["--model", args.model]
+            sys.argv += ["--model", args.model]
         if args.image_model:
-            gv_args += ["--image-model", args.image_model]
+            sys.argv += ["--image-model", args.image_model]
         if args.provider:
-            gv_args += ["--provider", args.provider]
+            sys.argv += ["--provider", args.provider]
         if args.local_variant:
-            gv_args += ["--local-variant", args.local_variant]
+            sys.argv += ["--local-variant", args.local_variant]
         if args.server:
-            gv_args += ["--server", args.server]
+            sys.argv += ["--server", args.server]
         if args.poll:
-            gv_args += ["--poll"]
+            sys.argv += ["--poll"]
         if args.upload:
-            gv_args += ["--upload"]
+            sys.argv += ["--upload"]
         if args.privacy:
-            gv_args += ["--privacy", args.privacy]
-        sys.argv = gv_args
+            sys.argv += ["--privacy", args.privacy]
         gv_generate()
     elif action == "query":
         from ahl.gen_video.query import main as gv_query
-        gv_args = ["ahl", "gen-video", "query", args.job_id]
+        sys.argv = ["ahl", args.job_id]
         if args.server:
-            gv_args += ["--server", args.server]
+            sys.argv += ["--server", args.server]
         if args.json:
-            gv_args += ["--json"]
-        sys.argv = gv_args
+            sys.argv += ["--json"]
         gv_query()
     elif action == "server":
         from ahl.gen_video.server import main as gv_server
-        gv_args = ["ahl", "gen-video", "server"]
+        sys.argv = ["ahl"]
         if args.host:
-            gv_args += ["--host", args.host]
+            sys.argv += ["--host", args.host]
         if args.port:
-            gv_args += ["--port", str(args.port)]
+            sys.argv += ["--port", str(args.port)]
         if args.reload:
-            gv_args += ["--reload"]
-        sys.argv = gv_args
+            sys.argv += ["--reload"]
         gv_server()
     elif action == "video":
         from ahl.gen_video.video import main as gv_video
-        gv_args = ["ahl", "gen-video", "video", args.file]
+        sys.argv = ["ahl", args.file]
         if args.output:
-            gv_args += ["--output", args.output]
+            sys.argv += ["--output", args.output]
         if args.model:
-            gv_args += ["--model", args.model]
+            sys.argv += ["--model", args.model]
         if args.image_model:
-            gv_args += ["--image-model", args.image_model]
+            sys.argv += ["--image-model", args.image_model]
         if args.provider:
-            gv_args += ["--provider", args.provider]
+            sys.argv += ["--provider", args.provider]
         if args.local_variant:
-            gv_args += ["--local-variant", args.local_variant]
+            sys.argv += ["--local-variant", args.local_variant]
         if args.upload:
-            gv_args += ["--upload"]
+            sys.argv += ["--upload"]
         if args.private:
-            gv_args += ["--private"]
-        sys.argv = gv_args
+            sys.argv += ["--private"]
         gv_video()
 
 
