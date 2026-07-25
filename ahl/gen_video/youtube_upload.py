@@ -151,7 +151,7 @@ def _get_credentials(credential_file=None):
     return credentials
 
 
-def prepare_video_metadata(content_text, note_path_hint=""):
+def prepare_video_metadata(content_text, note_path_hint="", api_key=None):
     """Extract YouTube metadata from markdown content.
 
     Parses YAML frontmatter for title/tags, generates description via LLM.
@@ -159,6 +159,7 @@ def prepare_video_metadata(content_text, note_path_hint=""):
     Args:
         content_text: Full markdown text with optional YAML frontmatter.
         note_path_hint: Optional file path for source attribution in description.
+        api_key: OpenRouter API key (falls back to OPENROUTER_API_KEY env var).
 
     Returns:
         (title: str, description: str, tags: list[str])
@@ -174,6 +175,11 @@ def prepare_video_metadata(content_text, note_path_hint=""):
         tag_str = frontmatter["tags"]
         if isinstance(tag_str, str):
             tags = [t.strip() for t in tag_str.replace(",", " ").split() if t.strip()]
+
+    # Temporarily set API key if provided
+    _saved_key = os.environ.get("OPENROUTER_API_KEY")
+    if api_key:
+        os.environ["OPENROUTER_API_KEY"] = api_key
 
     # Generate title and description via LLM when frontmatter is missing
     description = None
@@ -229,6 +235,12 @@ def prepare_video_metadata(content_text, note_path_hint=""):
     # Append source attribution
     if note_path_hint:
         description += f"\n\nSource: {note_path_hint}"
+
+    # Restore saved API key
+    if api_key and _saved_key:
+        os.environ["OPENROUTER_API_KEY"] = _saved_key
+    elif api_key and not _saved_key:
+        os.environ.pop("OPENROUTER_API_KEY", None)
 
     return title, description, tags
 

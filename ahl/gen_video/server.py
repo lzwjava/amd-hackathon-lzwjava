@@ -42,6 +42,7 @@ app = FastAPI(
 class GenerateContentRequest(BaseModel):
     topic: str
     model: str | None = None
+    openrouter_api_key: str | None = None
 
 
 class GenerateVideoRequest(BaseModel):
@@ -50,6 +51,7 @@ class GenerateVideoRequest(BaseModel):
     image_model: str = "black-forest-labs/flux.2-pro"
     provider: str = "openrouter"  # "openrouter", "local", "auto"
     local_variant: str = "schnell"  # "schnell", "dev", "2-dev"
+    openrouter_api_key: str | None = None
     upload: bool = False
     privacy: str = "public"
 
@@ -68,8 +70,17 @@ _jobs_lock = threading.Lock()
 DEFAULT_LLM_MODEL = "openrouter/auto-beta"
 
 
-def _generate_content_from_topic(topic: str, model: str | None = None) -> str:
+def _generate_content_from_topic(
+    topic: str,
+    model: str | None = None,
+    api_key: str | None = None,
+) -> str:
     """Use the LLM to generate a short markdown article explaining a topic.
+
+    Args:
+        topic: The topic to explain.
+        model: LLM model override.
+        api_key: OpenRouter API key (falls back to env var).
 
     Returns the markdown content string.
     """
@@ -99,7 +110,7 @@ def _generate_content_from_topic(topic: str, model: str | None = None) -> str:
         {"role": "user", "content": user_prompt},
     ]
 
-    raw = _openrouter_chat(messages, model=model, max_tokens=4096)
+    raw = _openrouter_chat(messages, model=model, max_tokens=4096, api_key=api_key)
     print(f"Generated {len(raw)} chars of content")
     return raw
 
@@ -115,6 +126,7 @@ def _run_generation(
     image_model: str,
     provider: str,
     local_variant: str,
+    api_key: str | None,
     upload: bool,
     privacy: str,
 ):
@@ -131,6 +143,7 @@ def _run_generation(
             verbose=True,
             provider=provider,
             local_variant=local_variant,
+            api_key=api_key,
         )
     except Exception as e:
         with _jobs_lock:
@@ -156,7 +169,9 @@ def _run_generation(
 
         print("\n── Uploading to YouTube ──")
         try:
-            title, description, tags = prepare_video_metadata(content)
+            title, description, tags = prepare_video_metadata(
+                content, api_key=api_key,
+            )
             print(f"Title: {title}")
             print(f"Tags: {', '.join(tags) if tags else '(none)'}")
             print(f"Privacy: {privacy}")
@@ -217,7 +232,9 @@ async def generate_content(req: GenerateContentRequest):
         raise HTTPException(status_code=400, detail="topic cannot be empty")
 
     try:
-        content = _generate_content_from_topic(req.topic, model=req.model)
+        content = _generate_content_from_topic(
+            req.topic, model=req.model, api_key=req.openrouter_api_key
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -265,6 +282,7 @@ async def submit_job(req: GenerateVideoRequest):
             req.image_model,
             req.provider,
             req.local_variant,
+            req.openrouter_api_key,
             req.upload,
             req.privacy,
         ),
@@ -322,6 +340,32 @@ async def get_job_status(job_id: str):
         if job["status"] == "completed"
         else None,
     }
+
+
+@app.post("/api/check-key")
+async def check_key(req: GenerateContentRequest):
+    """Validate an OpenRouter API key by calling the models endpoint."""
+    import requests as _requests
+    key = req.openrouter_api_key or os.getenv("OPENROUTER_API_KEY")
+    if not key:
+        raise HTTPException(status_code=400, detail="No API key provided")
+    try:
+        resp = _requests.get(
+            "https://openrouter.ai/api/v1/auth/key",
+            headers={"Authorization": f"Bearer {key}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json().get("data", {})
+            return {
+                "valid": True,
+                "label": data.get("label", "")[:20] + "...",
+                "usage": f"${data.get('usage', 0):.2f}",
+            }
+        else:
+            return {"valid": False, "error": resp.json().get("error", {}).get("message", "Invalid key")}
+    except Exception as e:
+        return {"valid": False, "error": str(e)}
 
 
 @app.get("/api/jobs/{job_id}/download")
@@ -636,6 +680,30 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
     <span class="badge" id="status-badge">checking...</span>
   </header>
 
+  <!-- API Key -->
+  <div class="card" id="api-key-card">
+    <div class="flex items-center justify-between" style="cursor:pointer;" onclick="toggleApiKey()">
+      <div class="card-title" style="margin-bottom:0;">🔑 API Key</div>
+      <span id="api-key-toggle" class="text-muted">▾</span>
+    </div>
+    <div id="api-key-body" class="mt-2">
+      <div class="row">
+        <div class="col flex-1">
+          <label for="api-key-input">OpenRouter API Key</label>
+          <div class="flex gap-2">
+            <input type="password" id="api-key-input" placeholder="sk-or-v1-..." class="flex-1" autocomplete="off">
+            <button class="btn btn-sm btn-secondary" onclick="checkApiKey()">Check</button>
+          </div>
+        </div>
+      </div>
+      <div id="api-key-status" class="mt-2 text-sm hidden"></div>
+      <div class="text-muted text-sm mt-2">
+        Get one at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent)">openrouter.ai/keys</a>.
+        Saved in browser localStorage.
+      </div>
+    </div>
+  </div>
+
   <!-- Step 1: Topic -->
   <div class="card">
     <div class="card-title">Step 1: Enter a Topic</div>
@@ -753,8 +821,60 @@ let pollInterval = null;
 let selectedProvider = 'openrouter';
 let currentVideoUrl = null;
 
+// ── API Key ──────────────────────────────────────────────────────────────
+function toggleApiKey() {
+  const body = document.getElementById('api-key-body');
+  const toggle = document.getElementById('api-key-toggle');
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  toggle.textContent = isHidden ? '▾' : '▸';
+}
+
+function getApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  return key || null;
+}
+
+async function checkApiKey() {
+  const key = getApiKey();
+  if (!key) { showApiKeyStatus('enter a key first', 'warn'); return; }
+  showApiKeyStatus('checking...', 'info');
+  try {
+    const resp = await fetch('/api/check-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: '', openrouter_api_key: key }),
+    });
+    const data = await resp.json();
+    if (data.valid) {
+      showApiKeyStatus('✅ Valid · ' + (data.usage || '') + ' used', 'success');
+      localStorage.setItem('ahl_api_key', key);
+    } else {
+      showApiKeyStatus('❌ ' + (data.error || 'Invalid'), 'error');
+    }
+  } catch(e) {
+    showApiKeyStatus('❌ ' + e.message, 'error');
+  }
+}
+
+function showApiKeyStatus(msg, type) {
+  const el = document.getElementById('api-key-status');
+  el.classList.remove('hidden', 'info', 'success', 'warn', 'error');
+  el.classList.add(type);
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function loadSavedApiKey() {
+  const saved = localStorage.getItem('ahl_api_key');
+  if (saved) {
+    document.getElementById('api-key-input').value = saved;
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  loadSavedApiKey();
   await checkHealth();
 });
 
@@ -785,7 +905,7 @@ async function generateContent() {
     const resp = await fetch('/api/generate-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic }),
+      body: JSON.stringify({ topic, openrouter_api_key: getApiKey() }),
     });
     if (!resp.ok) {
       const err = await resp.json();
@@ -856,6 +976,7 @@ async function generateVideo() {
         provider: selectedProvider,
         local_variant: localVariant,
         upload: doUpload,
+        openrouter_api_key: getApiKey(),
       }),
     });
     if (!resp.ok) {

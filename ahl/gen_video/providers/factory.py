@@ -8,6 +8,7 @@ def create_provider(
     provider: str = "openrouter",
     model: str | None = None,
     local_variant: str = "schnell",
+    api_key: str | None = None,
 ) -> ImageProvider:
     """Create an image provider by name.
 
@@ -25,7 +26,7 @@ def create_provider(
     provider = provider.lower()
 
     if provider == "openrouter":
-        return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro")
+        return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro", api_key=api_key)
 
     elif provider == "local":
         from .local_provider import LocalGPUProvider
@@ -50,7 +51,7 @@ def create_provider(
         except Exception:
             pass
         print("  Auto: falling back to OpenRouter")
-        return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro")
+        return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro", api_key=api_key)
 
     else:
         valid = ["openrouter", "local", "auto"]

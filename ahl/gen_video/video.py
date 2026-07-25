@@ -20,11 +20,19 @@ import requests
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
-def _openrouter_chat(messages, model=None, max_tokens=4096):
-    """Call OpenRouter chat completions and return the response text."""
-    api_key = os.getenv("OPENROUTER_API_KEY")
+def _openrouter_chat(messages, model=None, max_tokens=4096, api_key=None):
+    """Call OpenRouter chat completions and return the response text.
+
+    Args:
+        messages: Chat messages.
+        model: Model name (default: $MODEL env var).
+        max_tokens: Max tokens in response.
+        api_key: OpenRouter API key. Falls back to OPENROUTER_API_KEY env var.
+    """
     if not api_key:
-        raise Exception("OPENROUTER_API_KEY environment variable is not set")
+        api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise Exception("OPENROUTER_API_KEY not provided. Set it in the frontend or in the OPENROUTER_API_KEY env var.")
 
     if model is None:
         model = os.getenv("MODEL")
@@ -508,6 +516,7 @@ def generate_video_from_content(
     verbose=True,
     provider=None,
     local_variant="schnell",
+    api_key=None,
 ):
     """Run the full video generation pipeline from markdown content.
 
@@ -521,6 +530,7 @@ def generate_video_from_content(
         verbose: If True, print progress to stdout.
         provider: 'openrouter', 'local', or 'auto'. If None, uses OpenRouter.
         local_variant: Which local FLUX variant ('schnell', 'dev', '2-dev').
+        api_key: OpenRouter API key (overrides env var).
 
     Returns:
         (success: bool, output_path: str or None, error_msg: str or None)
@@ -544,6 +554,7 @@ def generate_video_from_content(
                 provider=provider,
                 model=image_model,
                 local_variant=local_variant,
+                api_key=api_key,
             )
             _p(f"Using image provider: {image_provider.name} ({image_provider.model_name})")
         except Exception as e:
@@ -571,7 +582,7 @@ def generate_video_from_content(
                 ] = i
             else:
                 futures[
-                    ex.submit(_generate_scene_image, i, prompt, temp_dir, image_model)
+                    ex.submit(_generate_scene_image, i, prompt, temp_dir, image_model or "black-forest-labs/flux.2-pro")
                 ] = i
 
         for future in as_completed(futures):

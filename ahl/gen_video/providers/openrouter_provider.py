@@ -15,8 +15,9 @@ from .base import ImageProvider
 class OpenRouterProvider(ImageProvider):
     """Generate images via OpenRouter's flux.2-pro model."""
 
-    def __init__(self, model: str = "black-forest-labs/flux.2-pro"):
+    def __init__(self, model: str = "black-forest-labs/flux.2-pro", api_key: str | None = None):
         self._model = model
+        self._api_key = api_key
 
     @property
     def name(self) -> str:
@@ -31,7 +32,7 @@ class OpenRouterProvider(ImageProvider):
 
         Returns path to downloaded image, or None on failure.
         """
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = self._api_key or os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
             print("  Error: OPENROUTER_API_KEY not set.")
             return None
@@ -76,7 +77,7 @@ class OpenRouterProvider(ImageProvider):
 
     def _retry_with_prompt(self, prompt: str, scene_index: int) -> str | None:
         """Retry image generation with a modified prompt."""
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = self._api_key or os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
             return None
 
