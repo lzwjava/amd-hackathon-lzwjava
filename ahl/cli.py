@@ -108,6 +108,12 @@ def main():
     genp.add_argument("--output", default=None, help="Output filename on remote (default: auto)")
     genp.add_argument("--download", action="store_true", help="Download the generated image to local")
 
+    # ── server ────────────────────────────────────────────────
+    server_parser = subparsers.add_parser("server", help="Start the gen-video API server")
+    server_parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
+    server_parser.add_argument("--port", type=int, default=8000, help="Port to listen on (default: 8000)")
+    server_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+
     # ── ssh / shell / info / check ──────────────────────────
     subparsers.add_parser("ssh", help="Open an interactive SSH session")
     sp = subparsers.add_parser("shell", help="Run a shell command on remote")
@@ -131,6 +137,8 @@ def main():
         return handle_gen_video(args)
     elif args.command == "gen":
         return handle_generate(args, ssh_base)
+    elif args.command == "server":
+        return handle_gen_video_server(args)
     elif args.command == "ssh":
         print(f"🔌 Connecting...")
         subprocess.run(f"{ssh_base} -t", shell=True)
@@ -151,6 +159,20 @@ def main():
 # ── Tunnel ─────────────────────────────────────────────────────
 
 # ── Gen-Video ──────────────────────────────────────────────────
+
+def handle_gen_video_server(args):
+    """Start the gen-video API server directly (top-level `ahl server`)."""
+    from ahl.gen_video.server import main as gv_server
+    gv_args = ["ahl", "gen-video", "server"]
+    if args.host:
+        gv_args += ["--host", args.host]
+    if args.port:
+        gv_args += ["--port", str(args.port)]
+    if args.reload:
+        gv_args += ["--reload"]
+    sys.argv = gv_args
+    gv_server()
+
 
 def handle_gen_video(args):
     action = args.gen_video_action
