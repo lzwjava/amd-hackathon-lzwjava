@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ahl"
-version = "0.1.0"
-description = "A very simple CLI tool"
+version = "0.2.0"
+description = "AMD Hackathon Launcher — manage remote server, tunnel, model downloads"
 requires-python = ">=3.10"
 
 [project.scripts]
