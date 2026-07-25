@@ -24,14 +24,12 @@ def _openrouter_chat(messages, model=None, max_tokens=4096):
     """Call OpenRouter chat completions and return the response text."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        print("Error: OPENROUTER_API_KEY not set.")
-        sys.exit(1)
+        raise Exception("OPENROUTER_API_KEY environment variable is not set")
 
     if model is None:
         model = os.getenv("MODEL")
     if not model:
-        print("Error: MODEL not set and no model specified.")
-        sys.exit(1)
+        raise Exception("MODEL not specified and MODEL env var is not set. Pass --model or set MODEL=...")
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -47,10 +45,11 @@ def _openrouter_chat(messages, model=None, max_tokens=4096):
         )
 
     body = resp.json()
-    content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+    msg = body.get("choices", [{}])[0].get("message", {})
+    content = msg.get("content") or msg.get("reasoning") or ""
     if not content:
         raise Exception(f"Empty response from model {model}")
-    return content
+    return content.strip()
 
 
 def _openrouter_image(prompt, image_model=None, retry_count=0):

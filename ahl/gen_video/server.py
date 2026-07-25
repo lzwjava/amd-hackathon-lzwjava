@@ -65,12 +65,18 @@ _jobs_lock = threading.Lock()
 # ── Helper: generate markdown content from a topic ────────────────────────
 
 
+DEFAULT_LLM_MODEL = "openrouter/auto-beta"
+
+
 def _generate_content_from_topic(topic: str, model: str | None = None) -> str:
     """Use the LLM to generate a short markdown article explaining a topic.
 
     Returns the markdown content string.
     """
     from ahl.gen_video.video import _openrouter_chat
+
+    if model is None:
+        model = os.getenv("MODEL") or DEFAULT_LLM_MODEL
 
     sys_prompt = (
         "You are a tech explainer writer. Given a topic, write a concise markdown article "
@@ -87,6 +93,7 @@ def _generate_content_from_topic(topic: str, model: str | None = None) -> str:
     )
 
     print(f"Generating content for topic: {topic}")
+    print(f"  Using LLM model: {model}")
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_prompt},
