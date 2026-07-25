@@ -227,7 +227,7 @@ def _strip_frontmatter(text):
     return re.sub(r"^---\n.*?\n---\n", "", text, count=1, flags=re.DOTALL)
 
 
-def _generate_scenes(markdown_text, model=None):
+def _generate_scenes(markdown_text, model=None, api_key=None):
     """Use LLM to generate 5 scenes with image prompts, titles, and subtitles."""
     sys_prompt = """You are a video script writer for short-form tech videos (Douyin/WeChat Video Account style).
 
@@ -259,7 +259,7 @@ Output format — return ONLY valid JSON, no markdown fences:
     ]
 
     print("  Generating scenes (titles, subtitles, image prompts)...")
-    raw = _openrouter_chat(messages, model=model, max_tokens=4096)
+    raw = _openrouter_chat(messages, model=model, max_tokens=4096, api_key=api_key)
 
     # Strip any markdown fences
     raw = re.sub(r"^```(?:json)?\s*", "", raw.strip())
@@ -537,8 +537,13 @@ def generate_video_from_content(
     """
     _p = print if verbose else lambda *a, **kw: None
 
+    # Use default LLM model if none specified
+    if model is None:
+        model = os.getenv("MODEL") or "openrouter/auto-beta"
+    _p(f"Using LLM model: {model}")
+
     _p("Step 1/3: Generating scenes (titles, subtitles, image prompts)...")
-    scenes = _generate_scenes(md_content, model=model)
+    scenes = _generate_scenes(md_content, model=model, api_key=api_key)
     _p(f"Scenes: {len(scenes)}")
 
     for i, s in enumerate(scenes):
