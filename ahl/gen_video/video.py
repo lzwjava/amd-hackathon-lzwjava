@@ -571,6 +571,14 @@ def generate_video_from_content(
     temp_dir = Path(tempfile.mkdtemp(prefix="gen_video_"))
     raw_image_paths = []
 
+    # Pre-import torch/diffusers for local GPU to avoid race conditions
+    if image_provider is not None and hasattr(image_provider, '_load_model'):
+        _p("  Pre-loading model (single thread)...")
+        try:
+            image_provider._load_model()
+        except Exception as e:
+            _p(f"  Pre-load failed: {e}")
+
     # Submit all scenes in parallel
     results: dict[int, str] = {}
     scene_indices = [i for i, s in enumerate(scenes) if s.get("image_prompt")]

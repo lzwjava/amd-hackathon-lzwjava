@@ -20,8 +20,8 @@ def _ensure_imports():
     if _torch is not None:
         return
     import torch as _torch
+    from diffusers import FluxPipeline as _Pipeline
     import diffusers as _diffusers
-    _Pipeline = _diffusers.FluxPipeline
 
 
 # Map short names to model paths on the remote server
