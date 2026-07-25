@@ -4,6 +4,7 @@ import argparse
 import os
 import subprocess
 import sys
+import time
 
 
 def ssh_cmd(ssh_base, remote_script):
@@ -95,12 +96,24 @@ def main():
     gv_video.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
     gv_video.add_argument("--private", action="store_true", help="Set YouTube video to private")
 
+    # ── generate ────────────────────────────────────────────
+    genp = subparsers.add_parser("gen", help="Generate images with FLUX on remote")
+    genp.add_argument("prompt", nargs="?", default=None, help="Text prompt for generation")
+    genp.add_argument("--model", default="schnell", choices=["schnell", "dev", "2-dev"], help="FLUX variant (default: schnell)")
+    genp.add_argument("--model-dir", default=None, help="Path to model on remote (default: /root/FLUX.<variant>)")
+    genp.add_argument("--steps", type=int, default=4, help="Inference steps (default: 4)")
+    genp.add_argument("--width", type=int, default=1024, help="Image width (default: 1024)")
+    genp.add_argument("--height", type=int, default=1024, help="Image height (default: 1024)")
+    genp.add_argument("--guidance", type=float, default=0.0, help="Guidance scale (default: 0.0)")
+    genp.add_argument("--output", default=None, help="Output filename on remote (default: auto)")
+    genp.add_argument("--download", action="store_true", help="Download the generated image to local")
+
     # ── ssh / shell / info / check ──────────────────────────
     subparsers.add_parser("ssh", help="Open an interactive SSH session")
     sp = subparsers.add_parser("shell", help="Run a shell command on remote")
     sp.add_argument("cmd", nargs=argparse.REMAINDER, help="Command to run")
     subparsers.add_parser("info", help="Show remote server info")
-    subparsers.add_parser("check", help="Check download progress")
+    subparsers.add_parser("check", help="Check download/progress status")
 
     args = parser.parse_args()
 
@@ -116,6 +129,8 @@ def main():
         return handle_download(args, ssh_base)
     elif args.command == "gen-video":
         return handle_gen_video(args)
+    elif args.command == "gen":
+        return handle_generate(args, ssh_base)
     elif args.command == "ssh":
         print(f"🔌 Connecting...")
         subprocess.run(f"{ssh_base} -t", shell=True)
@@ -341,6 +356,83 @@ tmux list-sessions 2>/dev/null || echo "no tmux sessions"
 ps aux | grep huggingface | grep -v grep || echo "no download process"
 """
     ssh_cmd(ssh_base, script)
+
+
+# ── Generate (FLUX inference on remote) ─────────────────────
+
+def handle_generate(args, ssh_base):
+    variant = args.model
+    if variant == "2-dev":
+        model_dir = args.model_dir or "/root/FLUX.2-dev"
+    elif variant == "dev":
+        model_dir = args.model_dir or "/root/FLUX.1-dev"
+    else:
+        model_dir = args.model_dir or "/root/FLUX.1-schnell"
+
+    prompt = args.prompt
+    if not prompt:
+        prompt = input("Enter prompt: ").strip()
+        if not prompt:
+            print("❌ No prompt provided")
+            sys.exit(1)
+
+    port = args.port
+    user = args.user
+    host = args.host
+    output = args.output or f"flux_output_{int(time.time())}.png"
+    remote_path = f"/root/{output}"
+
+    # Write a Python script to remote, then execute it (avoids quoting hell)
+    py_script = rf'''import torch
+from diffusers import FluxPipeline
+import time
+
+torch.cuda.empty_cache()
+
+pipe = FluxPipeline.from_pretrained("{model_dir}", torch_dtype=torch.bfloat16)
+pipe.enable_sequential_cpu_offload()
+pipe.enable_attention_slicing()
+
+prompt = """{prompt}"""
+print(f"Prompt: {{prompt}}")
+print(f"Generating {args.width}x{args.height}, {args.steps} steps...")
+t0 = time.time()
+image = pipe(
+    prompt,
+    num_inference_steps={args.steps},
+    guidance_scale={args.guidance},
+    width={args.width},
+    height={args.height},
+).images[0]
+t1 = time.time()
+
+image.save("{remote_path}")
+print(f"Done in {{t1-t0:.1f}}s")
+print(f"Saved: {remote_path} ({{image.size[0]}}x{{image.size[1]}})")
+print(f"Max VRAM: {{torch.cuda.max_memory_allocated()/1e9:.2f}} GB")
+'''
+
+    # Escape for SSH heredoc: base64 encode to avoid any quoting issues
+    import base64
+    encoded = base64.b64encode(py_script.encode()).decode()
+
+    script = f"""set -e
+source /opt/venv/bin/activate
+export USE_ROCM_AITER_ROPE_BACKEND=0
+echo "{encoded}" | base64 -d > /root/_infer.py
+python3 /root/_infer.py
+rm -f /root/_infer.py
+"""
+    ssh_cmd(ssh_base, script)
+
+    if args.download:
+        local_path = os.path.join(os.getcwd(), output)
+        print(f"📥 Downloading to {local_path}...")
+        subprocess.run([
+            "scp", "-P", str(port), "-o", "StrictHostKeyChecking=no",
+            f"{user}@{host}:{remote_path}", local_path
+        ])
+        print(f"✅ Saved to {local_path}")
 
 
 if __name__ == "__main__":
