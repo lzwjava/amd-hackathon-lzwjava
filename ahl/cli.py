@@ -64,6 +64,37 @@ def main():
         help="Download target directory on remote",
     )
 
+    # ── gen-video ───────────────────────────────────────────
+    gvp = subparsers.add_parser("gen-video", help="Generate short-form videos from markdown")
+    gvsub = gvp.add_subparsers(dest="gen_video_action", help="gen-video actions")
+
+    gv_generate = gvsub.add_parser("generate", help="Read markdown from pasteboard and submit to gen-video server")
+    gv_generate.add_argument("--output", help="Output video path")
+    gv_generate.add_argument("--model", help="LLM model override")
+    gv_generate.add_argument("--image-model", help="Image generation model override")
+    gv_generate.add_argument("--server", help="Gen-video server URL override")
+    gv_generate.add_argument("--poll", action="store_true", help="Wait for completion and download")
+    gv_generate.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
+    gv_generate.add_argument("--privacy", default="public", choices=["public", "private", "unlisted"], help="YouTube privacy (default: public)")
+
+    gv_query = gvsub.add_parser("query", help="Query job status")
+    gv_query.add_argument("job_id", help="Job ID to query")
+    gv_query.add_argument("--server", help="Server URL override")
+    gv_query.add_argument("--json", action="store_true", help="Output raw JSON")
+
+    gv_server = gvsub.add_parser("server", help="Start the gen-video API server")
+    gv_server.add_argument("--host", default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
+    gv_server.add_argument("--port", type=int, default=8000, help="Port to listen on (default: 8000)")
+    gv_server.add_argument("--reload", action="store_true", help="Enable auto-reload")
+
+    gv_video = gvsub.add_parser("video", help="Generate a video directly from a markdown file")
+    gv_video.add_argument("file", help="Path to markdown file")
+    gv_video.add_argument("--output", help="Output video path")
+    gv_video.add_argument("--model", help="LLM model for script generation")
+    gv_video.add_argument("--image-model", default="black-forest-labs/flux.2-pro", help="Image generation model")
+    gv_video.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
+    gv_video.add_argument("--private", action="store_true", help="Set YouTube video to private")
+
     # ── ssh / shell / info / check ──────────────────────────
     subparsers.add_parser("ssh", help="Open an interactive SSH session")
     sp = subparsers.add_parser("shell", help="Run a shell command on remote")
@@ -83,6 +114,8 @@ def main():
         return handle_tunnel(args, ssh_base)
     elif args.command == "download":
         return handle_download(args, ssh_base)
+    elif args.command == "gen-video":
+        return handle_gen_video(args)
     elif args.command == "ssh":
         print(f"🔌 Connecting...")
         subprocess.run(f"{ssh_base} -t", shell=True)
@@ -101,6 +134,71 @@ def main():
 
 
 # ── Tunnel ─────────────────────────────────────────────────────
+
+# ── Gen-Video ──────────────────────────────────────────────────
+
+def handle_gen_video(args):
+    action = args.gen_video_action
+    if not action:
+        print("Usage: ahl gen-video {generate|query|server|video}")
+        sys.exit(1)
+
+    if action == "generate":
+        from ahl.gen_video.generate import main as gv_generate
+        # Map ahl args to the generate module's sys.argv convention
+        gv_args = ["ahl", "gen-video", "generate"]
+        if args.output:
+            gv_args += ["--output", args.output]
+        if args.model:
+            gv_args += ["--model", args.model]
+        if args.image_model:
+            gv_args += ["--image-model", args.image_model]
+        if args.server:
+            gv_args += ["--server", args.server]
+        if args.poll:
+            gv_args += ["--poll"]
+        if args.upload:
+            gv_args += ["--upload"]
+        if args.privacy:
+            gv_args += ["--privacy", args.privacy]
+        sys.argv = gv_args
+        gv_generate()
+    elif action == "query":
+        from ahl.gen_video.query import main as gv_query
+        gv_args = ["ahl", "gen-video", "query", args.job_id]
+        if args.server:
+            gv_args += ["--server", args.server]
+        if args.json:
+            gv_args += ["--json"]
+        sys.argv = gv_args
+        gv_query()
+    elif action == "server":
+        from ahl.gen_video.server import main as gv_server
+        gv_args = ["ahl", "gen-video", "server"]
+        if args.host:
+            gv_args += ["--host", args.host]
+        if args.port:
+            gv_args += ["--port", str(args.port)]
+        if args.reload:
+            gv_args += ["--reload"]
+        sys.argv = gv_args
+        gv_server()
+    elif action == "video":
+        from ahl.gen_video.video import main as gv_video
+        gv_args = ["ahl", "gen-video", "video", args.file]
+        if args.output:
+            gv_args += ["--output", args.output]
+        if args.model:
+            gv_args += ["--model", args.model]
+        if args.image_model:
+            gv_args += ["--image-model", args.image_model]
+        if args.upload:
+            gv_args += ["--upload"]
+        if args.private:
+            gv_args += ["--private"]
+        sys.argv = gv_args
+        gv_video()
+
 
 def handle_tunnel(args, ssh_base):
     script = r"""
