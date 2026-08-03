@@ -1,6 +1,8 @@
 # ahl — AMD Hackathon Launcher
 
 CLI tool to manage an AMD GPU remote server: tunnel setup, model downloads, and system info.
+Also generates images locally with the FLUX.1-schnell Q4_0 stable-diffusion.cpp setup
+(`ahl img` / `--provider sdcpp`).
 
 ## Install
 
@@ -9,6 +11,20 @@ pip install -e .
 ```
 
 ## Usage
+
+### 🖼️ Local image generation — sd-cpp FLUX (this machine, no server needed)
+
+```bash
+# Generate an image locally with FLUX.1-schnell Q4_0 via stable-diffusion.cpp
+ahl img "a cyberpunk city at night, neon reflections"
+ahl img "a dragon on a castle tower" --width 1024 --height 1024   # needs free VRAM
+ahl img "cat" --steps 4 --output cat.png --seed 7
+```
+
+Defaults to 768×768 (the desktop holds ~2.9 GB of the 12 GB RTX 4070, so
+1024×1024 needs Chromium/Slack closed). Overrides: `--width`, `--height`,
+`--steps`, `--max-vram`, `--seed`, `--bin`, `--model-dir`, or env vars
+`SDCPP_BIN`, `SDCPP_MODEL_DIR`, `SDCPP_WIDTH`, `SDCPP_HEIGHT`, `SDCPP_STEPS`.
 
 ### 🔌 Tunnel — Expose a local port to the internet
 

@@ -13,7 +13,9 @@ def create_provider(
     """Create an image provider by name.
 
     Args:
-        provider: 'openrouter', 'local', or 'auto' (try local first, fallback to openrouter).
+        provider: 'openrouter', 'local', 'sdcpp', or 'auto' (try local first, fallback to openrouter).
+            - 'local'  = diffusers FLUX on the AMD GPU (gen-video server on the remote box)
+            - 'sdcpp'  = local stable-diffusion.cpp FLUX.1-schnell Q4_0 on this machine
         model: Model name override (for openrouter, e.g. 'black-forest-labs/flux.2-pro').
         local_variant: Which local FLUX variant to use ('schnell', 'dev', '2-dev').
 
@@ -27,6 +29,11 @@ def create_provider(
 
     if provider == "openrouter":
         return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro", api_key=api_key)
+
+    elif provider == "sdcpp":
+        from .sd_cpp_provider import SdCppProvider
+
+        return SdCppProvider()
 
     elif provider == "local":
         from .local_provider import LocalGPUProvider
@@ -54,7 +61,7 @@ def create_provider(
         return OpenRouterProvider(model=model or "black-forest-labs/flux.2-pro", api_key=api_key)
 
     else:
-        valid = ["openrouter", "local", "auto"]
+        valid = ["openrouter", "local", "sdcpp", "auto"]
         raise ValueError(f"Unknown provider '{provider}'. Valid: {valid}")
 
 

@@ -73,7 +73,7 @@ def main():
     gv_generate.add_argument("--output", help="Output video path")
     gv_generate.add_argument("--model", help="LLM model override")
     gv_generate.add_argument("--image-model", help="Image generation model override")
-    gv_generate.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "auto"], help="Image provider (default: openrouter)")
+    gv_generate.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "sdcpp", "auto"], help="Image provider (default: openrouter)")
     gv_generate.add_argument("--local-variant", default="schnell", choices=["schnell", "dev", "2-dev"], help="Local FLUX variant (default: schnell)")
     gv_generate.add_argument("--server", help="Gen-video server URL override")
     gv_generate.add_argument("--poll", action="store_true", help="Wait for completion and download")
@@ -95,10 +95,22 @@ def main():
     gv_video.add_argument("--output", help="Output video path")
     gv_video.add_argument("--model", help="LLM model for script generation")
     gv_video.add_argument("--image-model", default="black-forest-labs/flux.2-pro", help="Image generation model")
-    gv_video.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "auto"], help="Image provider (default: openrouter)")
+    gv_video.add_argument("--provider", default="openrouter", choices=["openrouter", "local", "sdcpp", "auto"], help="Image provider (default: openrouter)")
     gv_video.add_argument("--local-variant", default="schnell", choices=["schnell", "dev", "2-dev"], help="Local FLUX variant (default: schnell)")
     gv_video.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
     gv_video.add_argument("--private", action="store_true", help="Set YouTube video to private")
+
+    # ── img (local sd-cpp FLUX) ────────────────────────────────
+    imgp = subparsers.add_parser("img", help="Generate an image locally with sd-cpp FLUX.1-schnell Q4_0")
+    imgp.add_argument("prompt", nargs="?", default=None, help="Text prompt")
+    imgp.add_argument("--width", type=int, default=None, help="Image width (default: 768; 1024 needs free VRAM)")
+    imgp.add_argument("--height", type=int, default=None, help="Image height (default: 768)")
+    imgp.add_argument("--steps", type=int, default=None, help="Inference steps (default: 4)")
+    imgp.add_argument("--max-vram", type=int, default=None, help="VRAM budget in GB (default: 10)")
+    imgp.add_argument("--seed", type=int, default=42, help="Seed (default: 42)")
+    imgp.add_argument("--output", default=None, help="Output PNG path (default: flux_img_<timestamp>.png)")
+    imgp.add_argument("--bin", default=None, help="Path to sd-cli binary (default: /mnt/data/zz/flux/sd_cpp/build/bin/sd-cli)")
+    imgp.add_argument("--model-dir", default=None, help="Path to models dir (default: /mnt/data/zz/flux/models)")
 
     # ── generate ────────────────────────────────────────────
     genp = subparsers.add_parser("gen", help="Generate images with FLUX on remote")
@@ -139,6 +151,8 @@ def main():
         return handle_download(args, ssh_base)
     elif args.command == "gen-video":
         return handle_gen_video(args)
+    elif args.command == "img":
+        return handle_img(args)
     elif args.command == "gen":
         return handle_generate(args, ssh_base)
     elif args.command == "server":
@@ -463,6 +477,46 @@ rm -f /root/_infer.py
             f"{user}@{host}:{remote_path}", local_path
         ])
         print(f"✅ Saved to {local_path}")
+
+
+# ── img (local sd-cpp FLUX) ────────────────────────────────
+
+def handle_img(args):
+    """Generate an image locally with the sd-cpp FLUX.1-schnell Q4_0 setup."""
+    from ahl.gen_video.providers.sd_cpp_provider import SdCppProvider
+
+    prompt = args.prompt
+    if not prompt:
+        prompt = input("Enter prompt: ").strip()
+        if not prompt:
+            print("❌ No prompt provided")
+            sys.exit(1)
+
+    provider = SdCppProvider(
+        bin_path=args.bin,
+        model_dir=args.model_dir,
+        width=args.width,
+        height=args.height,
+        steps=args.steps,
+        max_vram=args.max_vram,
+        seed=args.seed,
+    )
+
+    print(f"🧠 {provider.name}")
+    print(f"   Model: {provider.model_name}")
+    print(f"   Output size: {provider._width}x{provider._height}, {provider._steps} steps")
+
+    out_path = provider.generate_image(prompt, scene_index=0)
+    if not out_path:
+        print("❌ Generation failed")
+        sys.exit(1)
+
+    if args.output:
+        import shutil
+        shutil.copy(out_path, args.output)
+        print(f"✅ Saved to {args.output}")
+    else:
+        print(f"✅ Saved to {out_path}")
 
 
 if __name__ == "__main__":
