@@ -747,14 +747,6 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
           <button class="btn btn-primary" id="btn-generate-content" onclick="generateContent()">Generate ✨</button>
         </div>
       </div>
-      <div class="col">
-        <label for="lang-select">Language</label>
-        <select id="lang-select">
-          <option value="auto">Auto (follow topic)</option>
-          <option value="en">English</option>
-          <option value="zh">中文</option>
-        </select>
-      </div>
     </div>
     <div id="content-status" class="mt-2 hidden">
       <span class="text-muted">Generating content...</span>
@@ -935,11 +927,6 @@ async function checkHealth() {
   }
 }
 
-// ── Language ────────────────────────────────────────────────────────────
-function getLanguage() {
-  return document.getElementById('lang-select').value;
-}
-
 // ── Step 1: Generate Content ─────────────────────────────────────────────
 async function generateContent() {
   const topic = document.getElementById('topic-input').value.trim();
@@ -954,7 +941,7 @@ async function generateContent() {
     const resp = await fetch('/api/generate-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, openrouter_api_key: getApiKey(), language: getLanguage() }),
+      body: JSON.stringify({ topic, openrouter_api_key: getApiKey() }),
     });
     if (!resp.ok) {
       const err = await resp.json();
@@ -1026,7 +1013,6 @@ async function generateVideo() {
         local_variant: localVariant,
         upload: doUpload,
         openrouter_api_key: getApiKey(),
-        language: getLanguage(),
       }),
     });
     if (!resp.ok) {
