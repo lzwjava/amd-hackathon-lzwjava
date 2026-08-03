@@ -29,6 +29,13 @@ def run_local(cmd):
 
 
 def main():
+    # Load ~/.config/fluxreel/.env (SDCPP_*, HF_TOKEN, provider overrides...)
+    try:
+        from fluxreel.env import load_env
+        load_env()
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         prog="fluxreel",
         description="FluxReel — AMD GPU short-video studio: manage remote server, tunnel, downloads, video generation",

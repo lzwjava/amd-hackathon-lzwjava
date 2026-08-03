@@ -14,6 +14,9 @@ Config via env vars:
   SDCPP_HEIGHT    image height (default 768)
   SDCPP_STEPS     inference steps (default 4)
   SDCPP_MAX_VRAM  --max-vram budget in GB (default 10)
+  SDCPP_BACKEND   --backend string (e.g. "diffusion=cuda,clip=cpu,vae=cuda,t5xxl=cpu").
+                  Set to empty to omit the flag entirely (needed for newer sd.cpp
+                  builds where the backend is compiled in — e.g. Vulkan builds).
 """
 
 import os
@@ -59,6 +62,7 @@ class SdCppProvider(ImageProvider):
         self._height = int(os.environ.get("SDCPP_HEIGHT", height or 720))
         self._steps = int(os.environ.get("SDCPP_STEPS", steps or 4))
         self._max_vram = int(os.environ.get("SDCPP_MAX_VRAM", max_vram or 10))
+        self._backend = os.environ.get("SDCPP_BACKEND", None)
         self._seed = seed
         self._lock = threading.Lock()
 
@@ -119,10 +123,16 @@ class SdCppProvider(ImageProvider):
             "--height", str(self._height),
             "--seed", str(self._seed),
             "--output", out_path,
-            "--backend", "diffusion=cuda,clip=cpu,vae=cuda,t5xxl=cpu",
             "--vae-tiling",
             "--max-vram", str(self._max_vram),
         ]
+        # Newer sd.cpp builds compile the backend in (e.g. Vulkan) and reject
+        # --backend. Omit it when SDCPP_BACKEND is set to empty; otherwise
+        # default to the CUDA backend string for classic builds.
+        if self._backend is None:
+            self._backend = "diffusion=cuda,clip=cpu,vae=cuda,t5xxl=cpu"
+        if self._backend:
+            cmd += ["--backend", self._backend]
 
         print(
             f"  Generating image via sd-cpp "
