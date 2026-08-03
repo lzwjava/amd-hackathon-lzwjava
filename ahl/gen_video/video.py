@@ -417,45 +417,71 @@ def _create_slide_frame(
         img_y = img_area_top + (img_area_height - new_h) // 2
         frame.paste(scene_img, (img_x, img_y))
 
-    # Load fonts
-    title_font = None
-    subtitle_font = None
-    for fp in [
+    # Load fonts (macOS + Linux paths; bold face for the title)
+    def _load_font(size, candidates):
+        for fp in candidates:
+            if os.path.exists(fp):
+                try:
+                    return ImageFont.truetype(fp, size)
+                except Exception:
+                    continue
+        return ImageFont.load_default()
+
+    TITLE_SIZE = 110      # px on a 1080x1920 frame
+    SUBTITLE_SIZE = 64
+    title_font = _load_font(TITLE_SIZE, [
         "/System/Library/Fonts/Helvetica.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ])
+    subtitle_font = _load_font(SUBTITLE_SIZE, [
         "/Library/Fonts/Arial.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf",
-    ]:
-        if os.path.exists(fp):
-            try:
-                title_font = ImageFont.truetype(fp, 72)
-                subtitle_font = ImageFont.truetype(fp, 40)
-                break
-            except Exception:
-                continue
-    if title_font is None:
-        title_font = ImageFont.load_default()
-        subtitle_font = ImageFont.load_default()
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ])
+
+    def _wrap_text(text, font, max_width):
+        """Word-wrap text to fit max_width; returns list of lines."""
+        words = text.split()
+        lines, cur = [], ""
+        for w in words:
+            test = f"{cur} {w}".strip()
+            bb = draw.textbbox((0, 0), test, font=font)
+            if bb[2] - bb[0] > max_width and cur:
+                lines.append(cur)
+                cur = w
+            else:
+                cur = test
+        if cur:
+            lines.append(cur)
+        return lines
 
     # ── Top title: just above the image area ──────────────────────────
-    # WeChat video has navigation at the top, so keep title just above the image (12%-18%)
-    title_bar_top = int(height * 0.12)
-    title_bar_height = int(height * 0.06)
+    # WeChat video has navigation at the top, so keep title just above the image (10%-19%)
+    title_bar_top = int(height * 0.10)
+    title_bar_height = int(height * 0.09)
     draw.rectangle(
         [0, title_bar_top, width, title_bar_top + title_bar_height], fill=(0, 0, 0, 200)
     )
 
-    # Center the title text
-    title_bbox = draw.textbbox((0, 0), title, font=title_font)
-    title_w = title_bbox[2] - title_bbox[0]
-    title_h = title_bbox[3] - title_bbox[1]
-    title_x = (width - title_w) // 2
-    title_y = title_bar_top + (title_bar_height - title_h) // 2
-    draw.text((title_x, title_y), title, fill="white", font=title_font)
+    # Center the title text (wrap to max 2 lines, shrink font if needed)
+    title_lines = _wrap_text(title, title_font, width - 80)
+    while len(title_lines) > 2 and getattr(title_font, "size", 0) > 48:
+        title_font = ImageFont.truetype(title_font.path, title_font.size - 8)
+        title_lines = _wrap_text(title, title_font, width - 80)
+    line_height_t = int(title_font.size * 1.25)
+    total_title_h = len(title_lines) * line_height_t
+    title_y = title_bar_top + (title_bar_height - total_title_h) // 2
+    for i, line in enumerate(title_lines):
+        bb = draw.textbbox((0, 0), line, font=title_font)
+        x = (width - (bb[2] - bb[0])) // 2
+        draw.text((x, title_y + i * line_height_t), line, fill="white", font=title_font)
 
     # ── Bottom subtitle: just below the image area ────────────────────
-    # WeChat video has avatar/username at the bottom, so put subtitle just below image (82%-88%)
-    subtitle_bar_top = int(height * 0.82)
-    subtitle_bar_height = int(height * 0.06)
+    # WeChat video has avatar/username at the bottom, so put subtitle just below image (80%-89%)
+    subtitle_bar_top = int(height * 0.80)
+    subtitle_bar_height = int(height * 0.09)
     draw.rectangle(
         [0, subtitle_bar_top, width, subtitle_bar_top + subtitle_bar_height],
         fill=(0, 0, 0, 200),
@@ -477,7 +503,7 @@ def _create_slide_frame(
         lines.append(current_line)
 
     # Center subtitle text vertically in bottom bar
-    line_height = 48
+    line_height = int(subtitle_font.size * 1.2)
     total_text_height = len(lines) * line_height
     text_start_y = subtitle_bar_top + (subtitle_bar_height - total_text_height) // 2
 
