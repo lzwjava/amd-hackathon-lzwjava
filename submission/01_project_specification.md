@@ -1,14 +1,14 @@
-# Project Specification — ahl: AMD GPU-Powered Short-Form Video Creation Tool
+# Project Specification — FluxReel: AMD GPU-Powered Short-Form Video Creation Tool
 
 **Track:** 1 — Development of Multimodal Content Creation Tools
-**Team project:** `ahl` (AMD Hackathon Launcher / Gen Video)
+**Team project:** FluxReel (`fluxreel` — the CLI/package name)
 **Submission date:** 2026-07
 
 ---
 
 ## 1. Application Scenarios
 
-`ahl` turns a plain topic into a polished **15-second vertical short video**
+FluxReel turns a plain topic into a polished **15-second vertical short video**
 (1080×1920, 9:16, 30 fps) fully locally on an **AMD Radeon GPU with the ROCm
 software stack**. It is designed for creators who need fast, high-volume,
 cost-controlled short-video output:
@@ -29,7 +29,7 @@ data leaves the machine, which matters for privacy-sensitive content.
 ## 2. Architecture Diagram
 
 ```
-┌────────────────────────────  ahl pipeline (Track 1)  ────────────────────────────┐
+┌────────────────────────────  fluxreel pipeline (Track 1)  ────────────────────────────┐
 │                                                                                  │
 │  ┌──────────┐   topic    ┌──────────────────────┐   markdown   ┌──────────────┐  │
 │  │  Web UI  │───────────▶│  Step 1: LLM writer  │─────────────▶│  Step 2:     │  │
@@ -119,11 +119,11 @@ data leaves the machine, which matters for privacy-sensitive content.
    - `amdgpu-install` (ROCm driver + runtime) or ROCm container
    - `pip install torch --index-url https://download.pytorch.org/whl/rocmX.Y`
    - `pip install diffusers transformers accelerate`
-2. **Download models** (HF mirror friendly): `ahl download flux [schnell|dev|2-dev]`
+2. **Download models** (HF mirror friendly): `fluxreel download flux [schnell|dev|2-dev]`
    → stores under `/root/FLUX.*`; or GGUF files for the sd-cpp path
-   (`ahl img` local setup with `SDCPP_BIN` / `SDCPP_MODEL_DIR`).
-3. **Verify GPU**: `ahl info` shows GPU, PyTorch build, VRAM, disk.
-4. **Start the service**: `ahl server --port 8000` (web UI + REST API).
+   (`fluxreel img` local setup with `SDCPP_BIN` / `SDCPP_MODEL_DIR`).
+3. **Verify GPU**: `fluxreel info` shows GPU, PyTorch build, VRAM, disk.
+4. **Start the service**: `fluxreel server --port 8000` (web UI + REST API).
 5. **Optional LLM**: `vllm serve <model> --dtype auto` or llama.cpp on ROCm,
    point `MODEL` env var at it; otherwise use OpenRouter.
 
@@ -166,6 +166,6 @@ the GPU image-generation core.
 | File | Requirement |
 |---|---|
 | `01_project_specification.md` | This document (§1–§5) |
-| Source repo (`README.md`, `ahl/`, `pyproject.toml`, `fabfile.py`) | Requirement 2 — source code, README with env config/startup guide/dependencies |
+| Source repo (`README.md`, `fluxreel/`, `pyproject.toml`, `fabfile.py`) | Requirement 2 — source code, README with env config/startup guide/dependencies |
 | `02_slides.md` → Marp PPT | Requirement 4 — PPT (Marp) |
 | `03_demo_video.md` | Requirement 3 — 3–5 min demo video script (video file to be provided) |

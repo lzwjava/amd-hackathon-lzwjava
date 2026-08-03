@@ -1,12 +1,12 @@
-"""Fabric deployment file for ahl — AMD Hackathon Launcher.
+"""Fabric deployment file for fluxreel — AMD Hackathon Launcher.
 
-Deploys the local source tree to /root/ahl on the remote server.
+Deploys the local source tree to /root/fluxreel on the remote server.
 
 Usage:
     fab -H 36.150.116.206:31005 deploy    # Deploy to remote
     fab -H root@36.150.116.206:31005 deploy
     fab -H 36.150.116.206:31005 status    # Show deployed version
-    fab -H 36.150.116.206:31005 shell -- cmd="ls -la /root/ahl"
+    fab -H 36.150.116.206:31005 shell -- cmd="ls -la /root/fluxreel"
 """
 
 from fabric import Connection, task
@@ -14,7 +14,7 @@ from fabric import Connection, task
 DEFAULT_HOST = "36.150.116.206"
 DEFAULT_PORT = 31005
 DEFAULT_USER = "root"
-REMOTE_DIR = "/root/ahl"
+REMOTE_DIR = "/root/fluxreel"
 
 EXCLUDE = [
     "__pycache__",
@@ -72,7 +72,7 @@ def _conn(c):
 
 @task
 def deploy(c):
-    """Rsync local source tree to /root/ahl on remote, then pip install -e ."""
+    """Rsync local source tree to /root/fluxreel on remote, then pip install -e ."""
     conn = _conn(c)
     print(f"🚀 Deploying to {conn.user}@{conn.host}:{conn.port} → {REMOTE_DIR}")
 
@@ -114,13 +114,13 @@ def status(c):
     print("=== Deployed version ===")
     conn.run(
         f"cd {REMOTE_DIR} && "
-        "python3 -c \"from ahl import __version__; print(__version__)\" 2>/dev/null || "
+        "python3 -c \"from fluxreel import __version__; print(__version__)\" 2>/dev/null || "
         "grep 'version' pyproject.toml | head -1 || "
         "echo '(version not found)'"
     )
     print()
     print("=== Package info ===")
-    conn.run("/opt/venv/bin/pip show ahl 2>/dev/null | head -5 || echo '(not installed via pip)'")
+    conn.run("/opt/venv/bin/pip show fluxreel 2>/dev/null | head -5 || echo '(not installed via pip)'")
     print()
     print("=== Remote files ===")
     conn.run(f"ls -la {REMOTE_DIR}/")
@@ -130,7 +130,7 @@ def status(c):
 def shell(c, cmd=""):
     """Run an arbitrary shell command on the remote server.
 
-    Usage: fab -H host:port shell -- cmd="ls -la /root/ahl"
+    Usage: fab -H host:port shell -- cmd="ls -la /root/fluxreel"
     """
     conn = _conn(c)
-    conn.run(cmd or "echo 'Usage: fab shell -- cmd=\"ls -la /root/ahl\"'", pty=True)
+    conn.run(cmd or "echo 'Usage: fab shell -- cmd=\"ls -la /root/fluxreel\"'", pty=True)

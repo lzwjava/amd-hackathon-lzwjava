@@ -82,7 +82,7 @@ def _get_credentials(credential_file=None):
 
 def main():
     try:
-        from ahl.env import load_env as _le
+        from fluxreel.env import load_env as _le
 
         _le()
     except ImportError:

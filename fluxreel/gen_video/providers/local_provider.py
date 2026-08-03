@@ -72,7 +72,7 @@ class LocalGPUProvider(ImageProvider):
         if not os.path.isdir(self._model_dir):
             raise RuntimeError(
                 f"Model directory not found: {self._model_dir}\n"
-                f"Download it first with: ahl download flux {self._variant}"
+                f"Download it first with: fluxreel download flux {self._variant}"
             )
 
         print(f"  Loading model from {self._model_dir}...")

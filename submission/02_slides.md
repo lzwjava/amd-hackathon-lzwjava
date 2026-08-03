@@ -3,12 +3,12 @@ marp: true
 theme: default
 paginate: true
 header: "AMD AI DevMaster Hackathon — Track 1"
-footer: "ahl · AMD Radeon GPU · ROCm"
+footer: "FluxReel · AMD Radeon GPU · ROCm"
 size: 16:9
 ---
 
 <!-- _class: lead -->
-# ahl
+# FluxReel
 ## AMD GPU-Powered Short-Form Video Creation Tool
 
 **Track 1 — Multimodal Content Creation Tools**
@@ -22,7 +22,7 @@ AMD AI DevMaster Hackathon 2026-07
 - Creating an explainer video today = script + images + captions + music + editing → **hours**
 - Existing tools either cost money per video (cloud APIs) or leak content to the cloud
 
-> **ahl: one topic → a polished 15 s vertical video, fully local on an AMD Radeon GPU.**
+> **FluxReel: one topic → a polished 15 s vertical video, fully local on an AMD Radeon GPU.**
 
 - No per-video API cost
 - Content stays on your machine
@@ -87,8 +87,8 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 
 # Demo Flow (3–5 min video)
 
-1. `ahl info` — GPU / ROCm / PyTorch build check
-2. `ahl server` → open the web UI at `:8000`
+1. `fluxreel info` — GPU / ROCm / PyTorch build check
+2. `fluxreel server` → open the web UI at `:8000`
 3. Type a topic (e.g. "How GPUs work" or "GPU是什么？")
 4. Choose the **Local GPU** provider
 5. Watch the job: script → 5× FLUX scenes on the Radeon GPU → assembly
@@ -103,10 +103,10 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 - **Zero marginal cost** — local Radeon GPU, no API fees
 - **Bilingual** — auto EN/中文 captions with proper CJK rendering
 - **Private** — content never leaves the machine
-- **Reusable** — REST API + CLI (`ahl img`, `ahl server`, `ahl download`)
+- **Reusable** — REST API + CLI (`fluxreel img`, `fluxreel server`, `fluxreel download`)
 
 ---
 
 <!-- _class: lead -->
 # Thank You
-## ahl — one topic, one AMD GPU, one video
+## FluxReel — one topic, one AMD GPU, one video

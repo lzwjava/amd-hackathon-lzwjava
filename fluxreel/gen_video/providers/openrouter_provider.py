@@ -8,7 +8,7 @@ from pathlib import Path
 
 import requests
 
-from ahl.gen_video.video import _sanitize_prompt, _download_image
+from fluxreel.gen_video.video import _sanitize_prompt, _download_image
 from .base import ImageProvider
 
 

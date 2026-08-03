@@ -676,7 +676,7 @@ def generate_video_from_content(
         _p(f'  Scene {i + 1}: "{s.get("title", "")}" — {s.get("subtitle", "")[:60]}...')
 
     # ── Step 2: Generate images via selected provider ──────────────────────
-    from ahl.gen_video.providers.factory import create_provider
+    from fluxreel.gen_video.providers.factory import create_provider
 
     image_provider = None
     if provider and provider != "openrouter":
@@ -917,7 +917,7 @@ def generate_video_from_content(
 
 def main():
     try:
-        from ahl.env import load_env as _le
+        from fluxreel.env import load_env as _le
 
         _le()
     except ImportError:
@@ -1033,7 +1033,7 @@ def main():
             upload_args.append("--private")
         sys.argv = upload_args
         try:
-            from ahl.gen_video.youtube_upload import main as upload_main
+            from fluxreel.gen_video.youtube_upload import main as upload_main
 
             upload_main()
         except Exception as e:

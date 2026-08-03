@@ -1,8 +1,8 @@
-# ahl — AMD Hackathon Launcher
+# FluxReel — AMD Hackathon Short-Video Studio
 
-CLI tool to manage an AMD GPU remote server: tunnel setup, model downloads, and system info.
-Also generates images locally with the FLUX.1-schnell Q4_0 stable-diffusion.cpp setup
-(`ahl img` / `--provider sdcpp`).
+CLI tool + web UI to manage an AMD GPU remote server: tunnel setup, model downloads, and system info.
+Also generates short-form vertical videos and images locally with the FLUX.1-schnell Q4_0 stable-diffusion.cpp setup
+(`fluxreel img` / `--provider sdcpp`).
 
 ## Install
 
@@ -16,9 +16,9 @@ pip install -e .
 
 ```bash
 # Generate an image locally with FLUX.1-schnell Q4_0 via stable-diffusion.cpp
-ahl img "a cyberpunk city at night, neon reflections"
-ahl img "a dragon on a castle tower" --width 1024 --height 1024   # needs free VRAM
-ahl img "cat" --steps 4 --output cat.png --seed 7
+fluxreel img "a cyberpunk city at night, neon reflections"
+fluxreel img "a dragon on a castle tower" --width 1024 --height 1024   # needs free VRAM
+fluxreel img "cat" --steps 4 --output cat.png --seed 7
 ```
 
 Defaults to 768×768 (the desktop holds ~2.9 GB of the 12 GB RTX 4070, so
@@ -30,51 +30,51 @@ Defaults to 768×768 (the desktop holds ~2.9 GB of the 12 GB RTX 4070, so
 
 ```bash
 # Set up the rc-tunnel (expose port 8081)
-ahl tunnel setup
+fluxreel tunnel setup
 
 # Check tunnel status
-ahl tunnel status
+fluxreel tunnel status
 
 # View tunnel logs
-ahl tunnel logs
+fluxreel tunnel logs
 
 # Stop the tunnel
-ahl tunnel stop
+fluxreel tunnel stop
 ```
 
 ### 📥 Download models
 
 ```bash
 # Download FLUX.1-schnell (default, ~58 GB)
-ahl download flux --token hf_xxxxx
+fluxreel download flux --token hf_xxxxx
 
 # Download FLUX.1-dev (~69 GB)
-ahl download flux dev --token hf_xxxxx
+fluxreel download flux dev --token hf_xxxxx
 
 # Download FLUX.2-dev (~177 GB)
-ahl download flux 2-dev --token hf_xxxxx
+fluxreel download flux 2-dev --token hf_xxxxx
 
 # Or set env var instead of --token
 export HF_TOKEN=hf_xxxxx
-ahl download flux
+fluxreel download flux
 ```
 
 ### ℹ️ System Info
 
 ```bash
 # Show GPU, PyTorch, disk, memory
-ahl info
+fluxreel info
 
 # Check download progress
-ahl check
+fluxreel check
 
 # Run any command on the remote server
-ahl shell nvidia-smi
+fluxreel shell nvidia-smi
 # or
-ahl shell "df -h && free -h"
+fluxreel shell "df -h && free -h"
 
 # Open interactive SSH session
-ahl ssh
+fluxreel ssh
 ```
 
 ## Defaults

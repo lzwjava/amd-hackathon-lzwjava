@@ -27,10 +27,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-from ahl.gen_video.video import generate_video_from_content
+from fluxreel.gen_video.video import generate_video_from_content
 
 app = FastAPI(
-    title="Gen Video API",
+    title="FluxReel API",
     description="Generate 15s vertical short-form videos (9:16) from markdown or a topic.",
     version="1.0.0",
 )
@@ -88,7 +88,7 @@ def _generate_content_from_topic(
 
     Returns the markdown content string.
     """
-    from ahl.gen_video.video import _openrouter_chat
+    from fluxreel.gen_video.video import _openrouter_chat
 
     if model is None:
         model = os.getenv("MODEL") or DEFAULT_LLM_MODEL
@@ -182,7 +182,7 @@ def _run_generation(
     # ── Upload to YouTube if requested ──────────────────────────────────
     youtube_url = None
     if upload:
-        from ahl.gen_video.youtube_upload import (
+        from fluxreel.gen_video.youtube_upload import (
             prepare_video_metadata,
             upload_video,
         )
@@ -446,7 +446,7 @@ def _get_frontend_html() -> str:
 def main():
     """CLI entry point: parse args and start the uvicorn server."""
     try:
-        from ahl.env import load_env as _le
+        from fluxreel.env import load_env as _le
 
         _le()
     except ImportError:
@@ -472,7 +472,7 @@ def main():
 
     args = parser.parse_args()
 
-    print("🌸 Gen Video API server starting...")
+    print("🌸 FluxReel server starting...")
     print(f"  Host: {args.host}")
     print(f"  Port: {args.port}")
     print(f"  Frontend: http://{args.host}:{args.port}/")
@@ -501,7 +501,7 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Video Generator</title>
+<title>FluxReel — AI Video Generator</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -707,7 +707,7 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
 <body>
 <div class="container">
   <header>
-    <h1>🌸 AI Video Generator</h1>
+    <h1>🌸 FluxReel</h1>
     <span class="badge">v0.2</span>
     <span class="badge" id="status-badge">checking...</span>
   </header>
@@ -884,7 +884,7 @@ async function checkApiKey() {
     const data = await resp.json();
     if (data.valid) {
       showApiKeyStatus('✅ Valid · ' + (data.usage || '') + ' used', 'success');
-      localStorage.setItem('ahl_api_key', key);
+      localStorage.setItem('fluxreel_api_key', key);
     } else {
       showApiKeyStatus('❌ ' + (data.error || 'Invalid'), 'error');
     }
@@ -902,7 +902,7 @@ function showApiKeyStatus(msg, type) {
 }
 
 function loadSavedApiKey() {
-  const saved = localStorage.getItem('ahl_api_key');
+  const saved = localStorage.getItem('fluxreel_api_key');
   if (saved) {
     document.getElementById('api-key-input').value = saved;
   }

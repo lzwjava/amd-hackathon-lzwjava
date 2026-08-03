@@ -184,7 +184,7 @@ def prepare_video_metadata(content_text, note_path_hint="", api_key=None):
     # Generate title and description via LLM when frontmatter is missing
     description = None
     try:
-        from ahl.llm.openrouter_client import call_openrouter_api_with_messages
+        from fluxreel.llm.openrouter_client import call_openrouter_api_with_messages
 
         # ── Title (if missing) ──────────────────────────────────────────
         if not title:
@@ -325,7 +325,7 @@ def upload_video(
 
 def main():
     try:
-        from ahl.env import load_env as _le
+        from fluxreel.env import load_env as _le
 
         _le()
     except ImportError:

@@ -1,4 +1,4 @@
-# Submission Package — ahl (Track 1: Multimodal Content Creation Tools)
+# Submission Package — FluxReel (Track 1: Multimodal Content Creation Tools)
 
 AMD AI DevMaster Hackathon 2026-07 · **Track 1** — short-form video creation on AMD Radeon GPU + ROCm.
 
@@ -7,10 +7,10 @@ AMD AI DevMaster Hackathon 2026-07 · **Track 1** — short-form video creation 
 | File | Requirement | Status |
 |---|---|---|
 | `01_project_specification.md` | Project Specification Document (scenarios, architecture, capabilities, model & deployment plan, AMD/ROCm optimization) | ✅ |
-| Source repo (`README.md`, `ahl/`, `pyproject.toml`, `fabfile.py`) | Project source code (complete repo) | ✅ |
+| Source repo (`README.md`, `fluxreel/`, `pyproject.toml`, `fabfile.py`) | Project source code (complete repo) | ✅ |
 | `02_slides.md` | PPT — Marp source (render with Marp CLI, see below) | ✅ |
 | `03_demo_video.md` | Demo video script (3–5 min) | ✅ script · 🎬 video TBD |
-| `demo/ahl_demo.mp4` | Final demo video file | ⏳ to be provided |
+| `demo/fluxreel_demo.mp4` | Final demo video file | ⏳ to be provided |
 
 ## Rendering the PPT (Marp)
 
@@ -29,10 +29,10 @@ npx @marp-team/marp-cli submission/02_slides.md --pdf
 
 ```bash
 pip install -e .
-ahl server --port 8000        # web UI + REST API
-ahl img "a cyberpunk city"     # local image via sd-cpp (FLUX Q4_0 GGUF)
-ahl download flux --token hf_xxx   # fetch FLUX models to the AMD GPU host
-ahl info                       # GPU / ROCm / disk check
+fluxreel server --port 8000        # web UI + REST API
+fluxreel img "a cyberpunk city"     # local image via sd-cpp (FLUX Q4_0 GGUF)
+fluxreel download flux --token hf_xxx   # fetch FLUX models to the AMD GPU host
+fluxreel info                       # GPU / ROCm / disk check
 ```
 
 ## Track-fit notes

@@ -1,4 +1,4 @@
-"""ahl - AMD Hackathon Launcher: CLI for remote server management."""
+"""fluxreel - FluxReel: AMD GPU short-video studio + remote server manager."""
 
 import argparse
 import os
@@ -30,8 +30,8 @@ def run_local(cmd):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="ahl",
-        description="AMD Hackathon Launcher — manage remote server, tunnel, and downloads",
+        prog="fluxreel",
+        description="FluxReel — AMD GPU short-video studio: manage remote server, tunnel, downloads, video generation",
     )
     parser.add_argument(
         "--host", default="36.150.116.206", help="Remote server host"
@@ -179,11 +179,11 @@ def main():
 # ── Gen-Video ──────────────────────────────────────────────────
 
 def handle_gen_video_server(args):
-    """Start the gen-video API server directly (top-level `ahl server`)."""
-    from ahl.gen_video.server import main as gv_server
+    """Start the gen-video API server directly (top-level `fluxreel server`)."""
+    from fluxreel.gen_video.server import main as gv_server
     # The server's argparse only knows about --host, --port, --reload.
     # Strip everything else from sys.argv so it doesn't choke on "gen-video" etc.
-    sys.argv = ["ahl"]
+    sys.argv = ["fluxreel"]
     if args.host:
         sys.argv += ["--host", args.host]
     if args.port:
@@ -196,12 +196,12 @@ def handle_gen_video_server(args):
 def handle_gen_video(args):
     action = args.gen_video_action
     if not action:
-        print("Usage: ahl gen-video {generate|query|server|video}")
+        print("Usage: fluxreel gen-video {generate|query|server|video}")
         sys.exit(1)
 
     if action == "generate":
-        from ahl.gen_video.generate import main as gv_generate
-        sys.argv = ["ahl"]
+        from fluxreel.gen_video.generate import main as gv_generate
+        sys.argv = ["fluxreel"]
         if args.output:
             sys.argv += ["--output", args.output]
         if args.model:
@@ -222,16 +222,16 @@ def handle_gen_video(args):
             sys.argv += ["--privacy", args.privacy]
         gv_generate()
     elif action == "query":
-        from ahl.gen_video.query import main as gv_query
-        sys.argv = ["ahl", args.job_id]
+        from fluxreel.gen_video.query import main as gv_query
+        sys.argv = ["fluxreel", args.job_id]
         if args.server:
             sys.argv += ["--server", args.server]
         if args.json:
             sys.argv += ["--json"]
         gv_query()
     elif action == "server":
-        from ahl.gen_video.server import main as gv_server
-        sys.argv = ["ahl"]
+        from fluxreel.gen_video.server import main as gv_server
+        sys.argv = ["fluxreel"]
         if args.host:
             sys.argv += ["--host", args.host]
         if args.port:
@@ -240,8 +240,8 @@ def handle_gen_video(args):
             sys.argv += ["--reload"]
         gv_server()
     elif action == "video":
-        from ahl.gen_video.video import main as gv_video
-        sys.argv = ["ahl", args.file]
+        from fluxreel.gen_video.video import main as gv_video
+        sys.argv = ["fluxreel", args.file]
         if args.output:
             sys.argv += ["--output", args.output]
         if args.model:
@@ -287,7 +287,7 @@ rc-tunnel expose --port {port}
     elif args.tunnel_action == "logs":
         ssh_cmd(ssh_base, script + "\nrc-tunnel logs --lines 50\n")
     else:
-        print("Usage: ahl tunnel {setup|status|stop|logs}")
+        print("Usage: fluxreel tunnel {setup|status|stop|logs}")
 
 
 # ── Download ───────────────────────────────────────────────────
@@ -344,8 +344,8 @@ tmux new-session -d -s flux-download '/root/download_flux.sh'
 echo "✅ Download started in tmux session 'flux-download'"
 echo ""
 echo "Monitor with:"
-echo "  ahl check"
-echo "  ahl shell 'du -sh {local_dir}/'"
+echo "  fluxreel check"
+echo "  fluxreel shell 'du -sh {local_dir}/'"
 echo ""
 sleep 2
 tmux capture-pane -t flux-download -p
@@ -483,7 +483,7 @@ rm -f /root/_infer.py
 
 def handle_img(args):
     """Generate an image locally with the sd-cpp FLUX.1-schnell Q4_0 setup."""
-    from ahl.gen_video.providers.sd_cpp_provider import SdCppProvider
+    from fluxreel.gen_video.providers.sd_cpp_provider import SdCppProvider
 
     prompt = args.prompt
     if not prompt:

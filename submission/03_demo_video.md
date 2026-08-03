@@ -8,13 +8,13 @@
 ## Timeline
 
 ### 0:00 – 0:25 · Intro
-- Project name: **ahl** — AMD GPU short-form video creation tool (Track 1)
+- Project name: **FluxReel** — AMD GPU short-form video creation tool (Track 1)
 - Hook: "One topic → a complete 15-second vertical video, fully local on an AMD Radeon GPU"
 - Show the web UI at `http://localhost:8000`
 
 ### 0:25 – 0:55 · Environment check
-- Terminal: `ahl info` → show GPU name (AMD Radeon), ROCm/PyTorch build, VRAM, disk
-- Terminal: `ahl --help` or brief repo tree
+- Terminal: `fluxreel info` → show GPU name (AMD Radeon), ROCm/PyTorch build, VRAM, disk
+- Terminal: `fluxreel --help` or brief repo tree
 
 ### 0:55 – 1:40 · Web UI — generate a video (default OpenRouter images is optional; use Local GPU for the AMD path)
 - Type topic: **"How GPUs work"** (English) — later also show a Chinese topic **"GPU是什么？"**
@@ -33,7 +33,7 @@
 - Optional: show a **Chinese** topic video to demonstrate CJK captions
 
 ### 3:50 – 4:30 · Performance & optimization
-- `ahl img "..." --provider sdcpp` quantized path (Q4_0 GGUF) — show wall-clock time per image
+- `fluxreel img "..." --provider sdcpp` quantized path (Q4_0 GGUF) — show wall-clock time per image
 - Compare/mention: 4-step schnell vs 28-step dev, Q4_0 4-bit quantization, VAE tiling, VRAM budget
 - Show `nvidia-smi`-equivalent (AMD: `rocm-smi`) during generation
 
