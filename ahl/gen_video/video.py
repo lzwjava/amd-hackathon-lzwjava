@@ -465,9 +465,12 @@ def _create_slide_frame(
         [0, title_bar_top, width, title_bar_top + title_bar_height], fill=(0, 0, 0, 200)
     )
 
-    # Center the title text (wrap to max 2 lines, shrink font if needed)
+    # Center the title text (max 2 lines, shrink font until it fits the bar)
     title_lines = _wrap_text(title, title_font, width - 80)
-    while len(title_lines) > 2 and getattr(title_font, "size", 0) > 48:
+    while (
+        len(title_lines) > 2
+        or len(title_lines) * int(title_font.size * 1.25) > title_bar_height
+    ) and getattr(title_font, "size", 0) > 48:
         title_font = ImageFont.truetype(title_font.path, title_font.size - 8)
         title_lines = _wrap_text(title, title_font, width - 80)
     line_height_t = int(title_font.size * 1.25)
@@ -487,27 +490,21 @@ def _create_slide_frame(
         fill=(0, 0, 0, 200),
     )
 
-    # Word-wrap subtitle
-    words = subtitle.split()
-    lines = []
-    current_line = ""
-    for word in words:
-        test_line = f"{current_line} {word}".strip()
-        bbox = draw.textbbox((0, 0), test_line, font=subtitle_font)
-        if bbox[2] - bbox[0] > width - 120:
-            lines.append(current_line)
-            current_line = word
-        else:
-            current_line = test_line
-    if current_line:
-        lines.append(current_line)
+    # Word-wrap subtitle (max 3 lines, shrink font until it fits the bar)
+    sub_lines = _wrap_text(subtitle, subtitle_font, width - 100)
+    while (
+        len(sub_lines) > 3
+        or len(sub_lines) * int(subtitle_font.size * 1.2) > subtitle_bar_height
+    ) and getattr(subtitle_font, "size", 0) > 32:
+        subtitle_font = ImageFont.truetype(subtitle_font.path, subtitle_font.size - 4)
+        sub_lines = _wrap_text(subtitle, subtitle_font, width - 100)
 
     # Center subtitle text vertically in bottom bar
     line_height = int(subtitle_font.size * 1.2)
-    total_text_height = len(lines) * line_height
+    total_text_height = len(sub_lines) * line_height
     text_start_y = subtitle_bar_top + (subtitle_bar_height - total_text_height) // 2
 
-    for i, line in enumerate(lines):
+    for i, line in enumerate(sub_lines):
         bbox = draw.textbbox((0, 0), line, font=subtitle_font)
         line_w = bbox[2] - bbox[0]
         x = (width - line_w) // 2
