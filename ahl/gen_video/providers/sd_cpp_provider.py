@@ -54,8 +54,9 @@ class SdCppProvider(ImageProvider):
         self._model_dir = (
             model_dir or os.environ.get("SDCPP_MODEL_DIR") or DEFAULT_MODEL_DIR
         )
-        self._width = int(os.environ.get("SDCPP_WIDTH", width or 768))
-        self._height = int(os.environ.get("SDCPP_HEIGHT", height or 768))
+        # 4:3 aspect (960x720) so scene images match the video slide layout
+        self._width = int(os.environ.get("SDCPP_WIDTH", width or 960))
+        self._height = int(os.environ.get("SDCPP_HEIGHT", height or 720))
         self._steps = int(os.environ.get("SDCPP_STEPS", steps or 4))
         self._max_vram = int(os.environ.get("SDCPP_MAX_VRAM", max_vram or 10))
         self._seed = seed

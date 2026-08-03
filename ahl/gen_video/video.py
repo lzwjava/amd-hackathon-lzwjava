@@ -370,10 +370,11 @@ def _generate_scene_image_with_provider(scene_index, prompt, temp_dir, provider)
 def _create_slide_frame(
     image_path, title, subtitle, output_path, width=1080, height=1920
 ):
-    """Create a full slide frame: image centered + top title + bottom subtitle.
+    """Create a full slide frame: 4:3 image centered + top title + bottom subtitle.
 
-    The image is placed in the middle 60% of the frame. Top and bottom sections
-    have semi-transparent black backgrounds with white text.
+    The image is 1080x810 (4:3) and centered vertically in the frame, so the
+    title and subtitle sit symmetrically around it. Source images are
+    cover-cropped to fill the 4:3 area exactly (no distortion).
     """
     from PIL import Image, ImageDraw, ImageFont
 
@@ -390,32 +391,31 @@ def _create_slide_frame(
     else:
         scene_img = None
 
+    # 4:3 image area (1080x810), centered vertically so text sits around it
+    img_area_width = width
+    img_area_height = int(width * 3 / 4)  # 810
+    img_area_top = (height - img_area_height) // 2  # 555
+    img_area_bottom = img_area_top + img_area_height  # 1365
+
     if scene_img:
-        # Place image centered in the middle 60% of the frame
-        img_area_top = int(height * 0.20)
-        img_area_bottom = int(height * 0.80)
-        img_area_height = img_area_bottom - img_area_top
-        img_area_width = width
-
-        # Scale image to fit the area while maintaining aspect ratio
-        img_aspect = scene_img.width / scene_img.height
-        area_aspect = img_area_width / img_area_height
-
-        if img_aspect > area_aspect:
-            # Image is wider — fit to width
-            new_w = img_area_width
-            new_h = int(new_w / img_aspect)
+        # Cover-crop the source to fill exactly 4:3 (center crop, no distortion)
+        target_aspect = img_area_width / img_area_height  # 4:3 = 1.333
+        src_aspect = scene_img.width / scene_img.height
+        if src_aspect > target_aspect:
+            # Source is wider — crop the sides
+            new_w = int(scene_img.height * target_aspect)
+            new_h = scene_img.height
         else:
-            # Image is taller — fit to height
-            new_h = img_area_height
-            new_w = int(new_h * img_aspect)
-
-        scene_img = scene_img.resize((new_w, new_h), Image.LANCZOS)
-
-        # Center the image in the area
-        img_x = (width - new_w) // 2
-        img_y = img_area_top + (img_area_height - new_h) // 2
-        frame.paste(scene_img, (img_x, img_y))
+            # Source is taller — crop the top/bottom
+            new_w = scene_img.width
+            new_h = int(scene_img.width / target_aspect)
+        left = (scene_img.width - new_w) // 2
+        top = (scene_img.height - new_h) // 2
+        scene_img = scene_img.crop((left, top, left + new_w, top + new_h))
+        scene_img = scene_img.resize(
+            (img_area_width, img_area_height), Image.LANCZOS
+        )
+        frame.paste(scene_img, (0, img_area_top))
 
     # Load fonts (macOS + Linux paths; bold face for the title)
     def _load_font(size, candidates):
@@ -458,8 +458,8 @@ def _create_slide_frame(
         return lines
 
     # ── Top title: just above the image area ──────────────────────────
-    # WeChat video has navigation at the top, so keep title just above the image (10%-19%)
-    title_bar_top = int(height * 0.10)
+    # Sits directly above the centered 4:3 image (y=382-555)
+    title_bar_top = img_area_top - int(height * 0.09)
     title_bar_height = int(height * 0.09)
     draw.rectangle(
         [0, title_bar_top, width, title_bar_top + title_bar_height], fill=(0, 0, 0, 200)
@@ -482,8 +482,8 @@ def _create_slide_frame(
         draw.text((x, title_y + i * line_height_t), line, fill="white", font=title_font)
 
     # ── Bottom subtitle: just below the image area ────────────────────
-    # WeChat video has avatar/username at the bottom, so put subtitle just below image (80%-89%)
-    subtitle_bar_top = int(height * 0.80)
+    # Sits directly below the centered 4:3 image (y=1365-1538)
+    subtitle_bar_top = img_area_bottom
     subtitle_bar_height = int(height * 0.09)
     draw.rectangle(
         [0, subtitle_bar_top, width, subtitle_bar_top + subtitle_bar_height],

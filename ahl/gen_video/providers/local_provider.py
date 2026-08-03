@@ -106,7 +106,7 @@ class LocalGPUProvider(ImageProvider):
                 num_inference_steps=params["steps"],
                 guidance_scale=params["guidance"],
                 width=1024,
-                height=1024,
+                height=768,  # 4:3 to match the video slide layout
             ).images[0]
             elapsed = time.time() - t0
             print(f"  Image generated in {elapsed:.1f}s")
