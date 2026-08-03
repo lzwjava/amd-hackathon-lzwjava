@@ -219,6 +219,11 @@ def _check_local_models() -> list[str]:
     for variant, path in model_paths.items():
         if os.path.isdir(path):
             available.append(variant)
+    # stable-diffusion.cpp setup on this machine (FLUX.1-schnell Q4_0 GGUF)
+    sd_bin = os.path.join("/mnt/data/zz/flux", "sd_cpp", "build", "bin", "sd-cli")
+    sd_models = os.path.join("/mnt/data/zz/flux", "models")
+    if os.path.isfile(sd_bin) and os.path.isdir(sd_models):
+        available.append("sdcpp")
     return available
 
 
@@ -251,6 +256,7 @@ async def submit_job(req: GenerateVideoRequest):
     The `provider` field selects the image generation backend:
       - "openrouter": Use OpenRouter API (default)
       - "local": Use the local AMD GPU with FLUX models
+      - "sdcpp": Use local stable-diffusion.cpp (FLUX.1-schnell Q4_0 GGUF)
       - "auto": Try local first, fall back to OpenRouter
     """
     if not req.content.strip():
@@ -748,6 +754,10 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
       <div class="provider-option" data-provider="local" onclick="selectProvider(this)">
         <div class="name">🖥️ Local GPU</div>
         <div class="desc">AMD GPU · FLUX.1-schnell</div>
+      </div>
+      <div class="provider-option" data-provider="sdcpp" onclick="selectProvider(this)">
+        <div class="name">🖨️ Stable Diffusion</div>
+        <div class="desc">FLUX.1-schnell Q4_0 · sd-cpp</div>
       </div>
       <div class="provider-option" data-provider="auto" onclick="selectProvider(this)">
         <div class="name">⚡ Auto</div>
