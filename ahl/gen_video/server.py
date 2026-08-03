@@ -43,15 +43,17 @@ class GenerateContentRequest(BaseModel):
     topic: str
     model: str | None = None
     openrouter_api_key: str | None = None
+    language: str | None = None  # 'en', 'zh', or None/'auto'
 
 
 class GenerateVideoRequest(BaseModel):
     content: str
     model: str | None = None
     image_model: str = "black-forest-labs/flux.2-pro"
-    provider: str = "openrouter"  # "openrouter", "local", "auto"
+    provider: str = "openrouter"  # "openrouter", "local", "sdcpp", "auto"
     local_variant: str = "schnell"  # "schnell", "dev", "2-dev"
     openrouter_api_key: str | None = None
+    language: str | None = None  # 'en', 'zh', or None/'auto'
     upload: bool = False
     privacy: str = "public"
 
@@ -74,6 +76,7 @@ def _generate_content_from_topic(
     topic: str,
     model: str | None = None,
     api_key: str | None = None,
+    language: str | None = None,
 ) -> str:
     """Use the LLM to generate a short markdown article explaining a topic.
 
@@ -81,6 +84,7 @@ def _generate_content_from_topic(
         topic: The topic to explain.
         model: LLM model override.
         api_key: OpenRouter API key (falls back to env var).
+        language: 'en', 'zh', or None/'auto' (follow the topic's language).
 
     Returns the markdown content string.
     """
@@ -89,6 +93,18 @@ def _generate_content_from_topic(
     if model is None:
         model = os.getenv("MODEL") or DEFAULT_LLM_MODEL
 
+    lang = (language or "auto").strip().lower()
+    if lang in ("zh", "chinese", "中文", "cn", "zh-cn"):
+        lang_rule = "Write the entire article in Simplified Chinese (中文)."
+    elif lang in ("en", "english", "en-us"):
+        lang_rule = "Write the entire article in English."
+    else:
+        lang_rule = (
+            "Write the entire article in the SAME language as the topic "
+            "(if the topic is in Chinese, write in Chinese; if in English, "
+            "write in English)."
+        )
+
     sys_prompt = (
         "You are a tech explainer writer. Given a topic, write a concise markdown article "
         "(300-500 words) that explains the topic clearly and engagingly. "
@@ -96,7 +112,8 @@ def _generate_content_from_topic(
         "The article will be turned into a 5-scene short video (15s total), "
         "so make it scannable and visual. "
         "Focus on key concepts, insights, and takeaways. "
-        "Avoid trademarked brand names where possible."
+        "Avoid trademarked brand names where possible. "
+        + lang_rule
     )
 
     user_prompt = (
@@ -105,6 +122,7 @@ def _generate_content_from_topic(
 
     print(f"Generating content for topic: {topic}")
     print(f"  Using LLM model: {model}")
+    print(f"  Language: {lang}")
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_prompt},
@@ -129,6 +147,7 @@ def _run_generation(
     api_key: str | None,
     upload: bool,
     privacy: str,
+    language: str | None = None,
 ):
     """Run the video generation pipeline in a background thread."""
     with _jobs_lock:
@@ -144,6 +163,7 @@ def _run_generation(
             provider=provider,
             local_variant=local_variant,
             api_key=api_key,
+            language=language,
         )
     except Exception as e:
         with _jobs_lock:
@@ -238,7 +258,10 @@ async def generate_content(req: GenerateContentRequest):
 
     try:
         content = _generate_content_from_topic(
-            req.topic, model=req.model, api_key=req.openrouter_api_key
+            req.topic,
+            model=req.model,
+            api_key=req.openrouter_api_key,
+            language=req.language,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -291,6 +314,7 @@ async def submit_job(req: GenerateVideoRequest):
             req.openrouter_api_key,
             req.upload,
             req.privacy,
+            req.language,
         ),
         daemon=True,
     )
@@ -300,6 +324,7 @@ async def submit_job(req: GenerateVideoRequest):
         "job_id": job_id,
         "status": "pending",
         "provider": req.provider,
+        "language": req.language,
         "status_url": f"/api/jobs/{job_id}",
         "download_url": f"/api/jobs/{job_id}/download",
     }
@@ -722,6 +747,14 @@ FRONTEND_HTML = r"""<!DOCTYPE html>
           <button class="btn btn-primary" id="btn-generate-content" onclick="generateContent()">Generate ✨</button>
         </div>
       </div>
+      <div class="col">
+        <label for="lang-select">Language</label>
+        <select id="lang-select">
+          <option value="auto">Auto (follow topic)</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+        </select>
+      </div>
     </div>
     <div id="content-status" class="mt-2 hidden">
       <span class="text-muted">Generating content...</span>
@@ -902,6 +935,11 @@ async function checkHealth() {
   }
 }
 
+// ── Language ────────────────────────────────────────────────────────────
+function getLanguage() {
+  return document.getElementById('lang-select').value;
+}
+
 // ── Step 1: Generate Content ─────────────────────────────────────────────
 async function generateContent() {
   const topic = document.getElementById('topic-input').value.trim();
@@ -916,7 +954,7 @@ async function generateContent() {
     const resp = await fetch('/api/generate-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, openrouter_api_key: getApiKey() }),
+      body: JSON.stringify({ topic, openrouter_api_key: getApiKey(), language: getLanguage() }),
     });
     if (!resp.ok) {
       const err = await resp.json();
@@ -988,6 +1026,7 @@ async function generateVideo() {
         local_variant: localVariant,
         upload: doUpload,
         openrouter_api_key: getApiKey(),
+        language: getLanguage(),
       }),
     });
     if (!resp.ok) {

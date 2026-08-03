@@ -227,28 +227,68 @@ def _strip_frontmatter(text):
     return re.sub(r"^---\n.*?\n---\n", "", text, count=1, flags=re.DOTALL)
 
 
-def _generate_scenes(markdown_text, model=None, api_key=None):
-    """Use LLM to generate 5 scenes with image prompts, titles, and subtitles."""
-    sys_prompt = """You are a video script writer for short-form tech videos (Douyin/WeChat Video Account style).
+def _generate_scenes(markdown_text, model=None, api_key=None, language=None):
+    """Use LLM to generate 5 scenes with image prompts, titles, and subtitles.
+
+    Args:
+        language: 'en', 'zh', or None/'auto' (follow the article's language).
+    """
+    lang = (language or "auto").strip().lower()
+    if lang in ("zh", "chinese", "中文", "cn", "zh-cn"):
+        lang_name = "Simplified Chinese (中文)"
+        title_rule = (
+            "title — 2-8 个汉字（显示在幻灯片顶部，醒目、有冲击力，屏幕大字）"
+        )
+        subtitle_rule = (
+            "subtitle — 10-25 个汉字（显示在幻灯片底部，解释性、信息性）"
+        )
+    elif lang in ("en", "english", "en-us"):
+        lang_name = "English"
+        title_rule = (
+            "title — short text (2-6 words) shown at the TOP of the slide. "
+            "Bold, eye-catching."
+        )
+        subtitle_rule = (
+            "subtitle — short text (5-15 words) shown at the BOTTOM of the "
+            "slide. Explanatory, informative."
+        )
+    else:
+        lang_name = (
+            "the SAME language as the article (if the article is in Chinese, "
+            "write Chinese; if in English, write English)"
+        )
+        title_rule = (
+            "title — SHORT text (2-6 words, or 2-8 characters for Chinese), "
+            "shown at the TOP of the slide. Bold, eye-catching."
+        )
+        subtitle_rule = (
+            "subtitle — SHORT text (5-15 words, or 10-25 characters for "
+            "Chinese), shown at the BOTTOM of the slide. Explanatory, "
+            "informative."
+        )
+
+    sys_prompt = f"""You are a video script writer for short-form tech videos (Douyin/WeChat Video Account style).
 
 Given a markdown article, produce exactly **5 scenes**. Each scene is a 3-second slide.
 
 Each scene needs:
-1. **image_prompt** — a detailed prompt for black-forest-labs/flux.2-pro to generate a vertical image. Style: clean tech illustration, infographic style, dark background with neon accents. MUST NOT contain trademarked brand names (NVIDIA, Intel, AMD, Tesla, etc.) — use descriptive alternatives like "GPU chip", "processor company", "graphics card".
-2. **title** — short text (2-6 words) shown at the TOP of the slide. Bold, eye-catching.
-3. **subtitle** — short text (5-15 words) shown at the BOTTOM of the slide. Explanatory, informative.
+1. **image_prompt** — a detailed prompt for black-forest-labs/flux.2-pro to generate a vertical image. Style: clean tech illustration, infographic style, dark background with neon accents. MUST NOT contain trademarked brand names (NVIDIA, Intel, AMD, Tesla, etc.) — use descriptive alternatives like "GPU chip", "processor company", "graphics card". Write the image_prompt in ENGLISH for best model quality.
+2. **{title_rule}**
+3. **{subtitle_rule}**
+
+IMPORTANT: All **title** and **subtitle** text MUST be written in {lang_name}.
 
 Output format — return ONLY valid JSON, no markdown fences:
 
-{
+{{
   "scenes": [
-    {
+    {{
       "title": "Short Title",
       "subtitle": "Short explanatory subtitle for this slide.",
       "image_prompt": "Detailed image prompt for Flux."
-    }
+    }}
   ]
-}"""
+}}"""
 
     messages = [
         {"role": "system", "content": sys_prompt},
@@ -417,40 +457,101 @@ def _create_slide_frame(
         )
         frame.paste(scene_img, (0, img_area_top))
 
-    # Load fonts (macOS + Linux paths; bold face for the title)
+    # Load fonts (macOS + Linux paths; bold face for the title).
+    # When the text contains CJK characters, use a CJK-capable font
+    # (DejaVu/Liberation do not cover Chinese/Japanese glyphs).
+    def _has_cjk(text):
+        return any(
+            "\u4e00" <= ch <= "\u9fff"  # CJK Unified Ideographs
+            or "\u3000" <= ch <= "\u303f"  # CJK punctuation
+            or "\uff00" <= ch <= "\uffef"  # fullwidth forms
+            for ch in (text or "")
+        )
+
+    needs_cjk = _has_cjk(title) or _has_cjk(subtitle)
+
     def _load_font(size, candidates):
-        for fp in candidates:
+        """Try each (path, face-index) pair; return PIL font or default."""
+        for fp, index in candidates:
             if os.path.exists(fp):
                 try:
-                    return ImageFont.truetype(fp, size)
+                    return ImageFont.truetype(fp, size, index=index)
                 except Exception:
                     continue
         return ImageFont.load_default()
 
-    TITLE_SIZE = 110      # px on a 1080x1920 frame
-    SUBTITLE_SIZE = 64
-    title_font = _load_font(TITLE_SIZE, [
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    ])
-    subtitle_font = _load_font(SUBTITLE_SIZE, [
-        "/Library/Fonts/Arial.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    ])
+    if needs_cjk:
+        TITLE_SIZE = 100  # CJK glyphs are denser; slightly smaller reads better
+        SUBTITLE_SIZE = 64
+        title_candidates = [
+            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc", 2),  # SC
+            ("/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc", 0),
+            ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0),
+            ("/System/Library/Fonts/Helvetica.ttc", 0),
+        ]
+        subtitle_candidates = [
+            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 2),  # SC
+            ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0),
+            ("/Library/Fonts/Arial.ttf", 0),
+        ]
+    else:
+        TITLE_SIZE = 110
+        SUBTITLE_SIZE = 64
+        title_candidates = [
+            ("/System/Library/Fonts/Helvetica.ttc", 0),
+            ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0),
+            ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 0),
+        ]
+        subtitle_candidates = [
+            ("/Library/Fonts/Arial.ttf", 0),
+            ("/System/Library/Fonts/Supplemental/Arial.ttf", 0),
+            ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 0),
+            ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 0),
+        ]
+
+    title_font = _load_font(TITLE_SIZE, title_candidates)
+    subtitle_font = _load_font(SUBTITLE_SIZE, subtitle_candidates)
 
     def _wrap_text(text, font, max_width):
-        """Word-wrap text to fit max_width; returns list of lines."""
+        """Wrap text to fit max_width.
+
+        CJK text has no spaces, so it wraps per character; Latin text wraps
+        per word. Any single over-long token is hard-broken by characters.
+        """
+        if _has_cjk(text):
+            lines, cur = [], ""
+            for ch in text:
+                test = cur + ch
+                bb = draw.textbbox((0, 0), test, font=font)
+                if bb[2] - bb[0] > max_width and cur:
+                    lines.append(cur)
+                    cur = ch
+                else:
+                    cur = test
+            if cur:
+                lines.append(cur)
+            return lines
         words = text.split()
         lines, cur = [], ""
         for w in words:
             test = f"{cur} {w}".strip()
             bb = draw.textbbox((0, 0), test, font=font)
-            if bb[2] - bb[0] > max_width and cur:
-                lines.append(cur)
-                cur = w
+            if bb[2] - bb[0] > max_width:
+                if cur:
+                    lines.append(cur)
+                # Hard-break an over-long word by characters
+                if _has_cjk(w):
+                    cur = ""
+                    for ch in w:
+                        test2 = cur + ch
+                        bb2 = draw.textbbox((0, 0), test2, font=font)
+                        if bb2[2] - bb2[0] > max_width and cur:
+                            lines.append(cur)
+                            cur = ch
+                        else:
+                            cur = test2
+                else:
+                    cur = w
             else:
                 cur = test
         if cur:
@@ -471,7 +572,7 @@ def _create_slide_frame(
         len(title_lines) > 2
         or len(title_lines) * int(title_font.size * 1.25) > title_bar_height
     ) and getattr(title_font, "size", 0) > 48:
-        title_font = ImageFont.truetype(title_font.path, title_font.size - 8)
+        title_font = _load_font(title_font.size - 8, title_candidates)
         title_lines = _wrap_text(title, title_font, width - 80)
     line_height_t = int(title_font.size * 1.25)
     total_title_h = len(title_lines) * line_height_t
@@ -496,7 +597,7 @@ def _create_slide_frame(
         len(sub_lines) > 3
         or len(sub_lines) * int(subtitle_font.size * 1.2) > subtitle_bar_height
     ) and getattr(subtitle_font, "size", 0) > 32:
-        subtitle_font = ImageFont.truetype(subtitle_font.path, subtitle_font.size - 4)
+        subtitle_font = _load_font(subtitle_font.size - 4, subtitle_candidates)
         sub_lines = _wrap_text(subtitle, subtitle_font, width - 100)
 
     # Center subtitle text vertically in bottom bar
@@ -540,6 +641,7 @@ def generate_video_from_content(
     provider=None,
     local_variant="schnell",
     api_key=None,
+    language=None,
 ):
     """Run the full video generation pipeline from markdown content.
 
@@ -554,6 +656,7 @@ def generate_video_from_content(
         provider: 'openrouter', 'local', or 'auto'. If None, uses OpenRouter.
         local_variant: Which local FLUX variant ('schnell', 'dev', '2-dev').
         api_key: OpenRouter API key (overrides env var).
+        language: 'en', 'zh', or None/'auto' (follow article language).
 
     Returns:
         (success: bool, output_path: str or None, error_msg: str or None)
@@ -566,7 +669,7 @@ def generate_video_from_content(
     _p(f"Using LLM model: {model}")
 
     _p("Step 1/3: Generating scenes (titles, subtitles, image prompts)...")
-    scenes = _generate_scenes(md_content, model=model, api_key=api_key)
+    scenes = _generate_scenes(md_content, model=model, api_key=api_key, language=language)
     _p(f"Scenes: {len(scenes)}")
 
     for i, s in enumerate(scenes):
