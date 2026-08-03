@@ -470,14 +470,32 @@ def _create_slide_frame(
 
     needs_cjk = _has_cjk(title) or _has_cjk(subtitle)
 
-    def _load_font(size, candidates):
-        """Try each (path, face-index) pair; return PIL font or default."""
+    def _load_font(size, candidates, cjk=False):
+        """Try each (path, face-index) pair; return PIL font or default.
+
+        When cjk=True and every explicit path fails, ask fontconfig for any
+        installed CJK-capable font (fc-match) as a last resort so Chinese
+        text never falls back to the non-CJK default bitmap font (tofu).
+        """
         for fp, index in candidates:
             if os.path.exists(fp):
                 try:
                     return ImageFont.truetype(fp, size, index=index)
                 except Exception:
                     continue
+        if cjk:
+            try:
+                import subprocess
+                out = subprocess.run(
+                    ["fc-match", "-f", "%{file}:%{index}", ":lang=zh-cn"],
+                    capture_output=True, text=True, timeout=5,
+                ).stdout.strip()
+                if out and ":" in out:
+                    fp, _, idx = out.rpartition(":")
+                    if os.path.exists(fp):
+                        return ImageFont.truetype(fp, size, index=int(idx))
+            except Exception:
+                pass
         return ImageFont.load_default()
 
     if needs_cjk:
@@ -485,6 +503,7 @@ def _create_slide_frame(
         SUBTITLE_SIZE = 64
         title_candidates = [
             ("/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc", 2),  # SC
+            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 2),  # SC
             ("/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc", 0),
             ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0),
             ("/System/Library/Fonts/Helvetica.ttc", 0),
@@ -509,8 +528,8 @@ def _create_slide_frame(
             ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 0),
         ]
 
-    title_font = _load_font(TITLE_SIZE, title_candidates)
-    subtitle_font = _load_font(SUBTITLE_SIZE, subtitle_candidates)
+    title_font = _load_font(TITLE_SIZE, title_candidates, cjk=needs_cjk)
+    subtitle_font = _load_font(SUBTITLE_SIZE, subtitle_candidates, cjk=needs_cjk)
 
     def _wrap_text(text, font, max_width):
         """Wrap text to fit max_width.
