@@ -5,14 +5,44 @@ paginate: true
 header: "AMD AI DevMaster Hackathon — Track 1"
 footer: "FluxReel · AMD Radeon GPU · ROCm"
 size: 16:9
+style: |
+  section {
+    background: linear-gradient(150deg, #0b0e15 0%, #141926 55%, #1a2130 100%);
+    color: #f2f5fa;
+    --color-background: #0b0e15;
+    --color-foreground: #f2f5fa;
+    --color-highlight: #ff5c4d;
+    --color-dimmed: #93a0b3;
+    --color-background-code: #131a27;
+  }
+  h1, h2, h3, h4, h5, h6 { color: #ffffff; }
+  header, footer { color: var(--color-dimmed); }
+  strong { color: #ffd57a; }
+  li::marker { color: #ed1c24; }
+  blockquote {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 0.35em solid #ed1c24;
+    border-radius: 0.2em;
+    color: #f2f5fa;
+  }
+  table th { background: #1e2637; color: #ffffff; }
+  table td { border-color: #2b3446; }
+  code {
+    background: #131a27;
+    color: #ffb86c;
+  }
+  pre {
+    background: #0f1420;
+    border: 1px solid #26304a;
+  }
+  a { color: #ff6a5e; }
 ---
 
-<!-- _class: lead -->
-# FluxReel
-## AMD GPU-Powered Short-Form Video Creation Tool
+<!-- _header: "" -->
+<!-- _footer: "" -->
+<!-- _paginate: false -->
 
-**Track 1 — Multimodal Content Creation Tools**
-AMD AI DevMaster Hackathon 2026-07
+![bg](cover.png)
 
 ---
 
