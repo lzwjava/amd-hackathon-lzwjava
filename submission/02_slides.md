@@ -66,13 +66,48 @@ style: |
 Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image generation
              (article)         5 scenes:              (AMD Radeon GPU · ROCm)
                                 title / subtitle /         FLUX.1-schnell
-                                image prompt               Q4_0 GGUF (4-bit)
+                                image prompt               Q4_0 GGUF · sd-cpp
                                                                  │
                                                                  ▼
    15 s MP4 ◀─ ⑤ ffmpeg assembly ◀─ ④ Slide composition ◀─ 5× 4:3 images
    1080×1920     H.264 · music        title bars (110px)     + captions
    30 fps        fade-out             CJK-aware fonts
 ```
+
+---
+
+# The sd-cpp Route — Quantized Fast Path
+
+- **stable-diffusion.cpp (`sd-cli`)** — a native C++ engine; **no torch/diffusers** in the loop
+- FLUX.1-schnell loaded as **4 components**, each placed where it helps most:
+
+| Component | File | Placement |
+|---|---|---|
+| Diffusion transformer (12B) | `flux1-schnell-Q4_0.gguf` | **GPU** |
+| VAE decoder | `ae.safetensors` | **GPU** · tiled |
+| CLIP-L text encoder | `clip_l.safetensors` | CPU |
+| T5-XXL text encoder | `t5xxl_fp16.safetensors` | CPU |
+
+- One **fresh process per image** → no persistent pipeline, no VRAM leaks
+- A **mutex serializes GPU runs** so 5 parallel scene threads never overlap
+- Exposes the same `ImageProvider` API → pipeline stays backend-agnostic
+
+---
+
+# sd-cpp Optimizations
+
+| Optimization | How | Win |
+|---|---|---|
+| **Q4_0 4-bit GGUF** | quantized transformer weights | ~4× smaller → ~8.75 GB per run on a 12 GB card |
+| **4-step distilled** | FLUX.1-schnell `--steps 4` | ≈ 7× fewer denoise steps vs 28 |
+| **`--vae-tiling`** | tile-based latent decode | no OOM on small VRAM |
+| **`--max-vram 10`** | hard VRAM budget | leaves ~2.9 GB for the desktop |
+| **Backend offload** | `diffusion=cuda, vae=cuda` · `clip/t5xxl=cpu` | text encoders stay off-GPU |
+| **`--cfg-scale 1.0`** | no classifier-free guidance | saves ~2× compute (distilled model) |
+| **4:3 960×720** | scenes match the slide area | fewer pixels = less GPU time |
+| **Fixed seed 42** | deterministic sampling | reproducible, cache-friendly scenes |
+
+> Trade-off: each image pays a model-load cost (fresh process) — in exchange: zero memory growth, crash-isolated, restart-any-time generation.
 
 ---
 
@@ -95,7 +130,7 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 |---|---|---|
 | **FLUX.1-schnell** | images (default) | 12B, **4-step distilled** → ~7× faster than 28-step |
 | FLUX.1-dev / 2-dev | images (quality) | 28 steps when fidelity matters |
-| **FLUX.1-schnell Q4_0** | images (quantized) | **4-bit GGUF** → ~4× smaller, low-VRAM decode |
+| **FLUX.1-schnell Q4_0** | images (quantized) | **4-bit GGUF** via **sd-cpp** → ~4× smaller, low-VRAM decode |
 | vLLM / llama.cpp | script planning | Optional local LLM on the same Radeon GPU |
 
 > Core multimodal inference runs **only on AMD Radeon GPU (ROCm)**.
@@ -113,6 +148,8 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 6. **No-re-encode assembly** — per-slide H.264 segments + concat
 7. **Sized resolutions** — 4:3 scenes matched to the slide area (fewer pixels = less GPU time)
 
+> Items 1–5 are realized by the **sd-cpp route** — see the deep dive above.
+
 ---
 
 # Demo Flow (3–5 min video)
@@ -123,7 +160,7 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 4. Choose the **Local GPU** provider
 5. Watch the job: script → 5× FLUX scenes on the Radeon GPU → assembly
 6. Play & download the final 15 s video
-7. (Optional) Quantized Q4_0 path + measured latency
+7. (Optional) Quantized Q4_0 sd-cpp path + measured latency
 
 ---
 
@@ -134,6 +171,17 @@ Topic ─▶ ① LLM script      ─▶ ② Scene planner     ─▶ ③ Image g
 - **Bilingual** — auto EN/中文 captions with proper CJK rendering
 - **Private** — content never leaves the machine
 - **Reusable** — REST API + CLI (`fluxreel img`, `fluxreel server`, `fluxreel download`)
+
+---
+
+# Team
+
+| | **Zhiwei Li** | **Thomas Yang · Aztice** |
+|---|---|---|
+| **Role** | Senior AI Full-Stack Engineer | HK secondary school student · AI infra engineer |
+| **Experience** | 12 years engineering & entrepreneurship | Multiple years in AI infrastructure |
+| **Highlights** | Founded **Fun Live** (30,000 users) · consulting team → ¥3M CNY/yr · **contractor at DBS Bank** (SG) & **HSBC** (HK) | Lead developer of **Axono** (lightweight AI inference library) · IKCEST 2024 & Baidu/XJTU Big Data Competitions — **17th of 1,700+** |
+| **GitHub** | [github.com/lzwjava](https://github.com/lzwjava) | [github.com/aztice](https://github.com/aztice) |
 
 ---
 
