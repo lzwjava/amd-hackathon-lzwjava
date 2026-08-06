@@ -5,6 +5,7 @@
 
 \usepackage[a4paper,margin=2.4cm,top=2.3cm,bottom=2.4cm]{geometry}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{fontspec}
@@ -394,5 +395,26 @@ sd-cli --diffusion-model flux1-schnell-Q4_0.gguf \
         12\,GB-class VRAM with \texttt{--max-vram 10} + VAE tiling
         (~8.75\,GB per run, leaving ~2.9\,GB for desktop use).
 \end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{Demo Preview}
+% ═══════════════════════════════════════════════════════════════════════
+
+Two sample frames from a generated FluxReel video (topic: ``How GPUs work''):
+
+\begin{figure}[h]
+  \centering
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{demo_frame_1.jpg}
+    \caption{Sample video frame 1 --- scripted scene image composed with title bar.}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{demo_frame_2.jpg}
+    \caption{Sample video frame 2 --- scene image composed with subtitle bar.}
+  \end{minipage}
+\end{figure}
 
 \end{document}
