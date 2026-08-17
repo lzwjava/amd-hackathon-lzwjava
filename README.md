@@ -12,10 +12,10 @@ downloads, and system info.
 Generated output vertical frames (1080×1920, 9:16):
 
 <p align="center">
-  <img src="submission/demo_frame_1.jpg" alt="Demo frame 1" width="420"/>
+  <img src="submission/demo_frame_1.jpg" alt="Demo frame 1" width="600"/>
 </p>
 <p align="center">
-  <img src="submission/demo_frame_2.jpg" alt="Demo frame 2" width="420"/>
+  <img src="submission/demo_frame_2.jpg" alt="Demo frame 2" width="600"/>
 </p>
 
 Full generated video (15 s, 30 fps, H.264 + background music):
