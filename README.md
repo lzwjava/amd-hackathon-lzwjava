@@ -7,6 +7,24 @@ downloads, and system info.
 
 **Track 1 — Multimodal Content Creation Tools** · AMD AI DevMaster Hackathon 2026-07
 
+## 🎬 Demo
+
+Generated output vertical frames (1080×1920, 9:16):
+
+<p align="center">
+  <img src="submission/demo_frame_1.jpg" alt="Demo frame 1" width="300"/>
+  <img src="submission/demo_frame_2.jpg" alt="Demo frame 2" width="300"/>
+</p>
+
+Full generated video (15 s, 30 fps, H.264 + background music):
+
+<p align="center">
+  <video src="submission/fluxreel.mp4" controls width="360">
+    Your browser does not support embedded video.
+    <a href="submission/fluxreel.mp4">Download fluxreel.mp4</a>
+  </video>
+</p>
+
 ## Features
 
 - 🎬 **Topic → 15 s video in minutes**: LLM drafts a markdown article, a scene planner
