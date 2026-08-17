@@ -21,7 +21,7 @@ Generated output vertical frames (1080×1920, 9:16):
 Full generated video (1080×1920, 9:16, 15 s, 30 fps, H.264 + background music):
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/54ef43ea-f810-4b02-a759-f19bb08696ae" controls width="420">
+  <video src="https://github.com/user-attachments/assets/54ef43ea-f810-4b02-a759-f19bb08696ae" controls width="600">
     Your browser does not support embedded video.
     <a href="https://github.com/user-attachments/assets/54ef43ea-f810-4b02-a759-f19bb08696ae">Download fluxreel_demo.mp4</a>
   </video>
