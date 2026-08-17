@@ -18,12 +18,12 @@ Generated output vertical frames (1080×1920, 9:16):
   <img src="submission/demo_frame_2.jpg" alt="Demo frame 2" width="600"/>
 </p>
 
-Full generated video (15 s, 30 fps, H.264 + background music):
+Full generated video (1080×1920, 9:16, 15 s, 30 fps, H.264 + background music):
 
 <p align="center">
-  <video src="submission/fluxreel.mp4" controls width="360">
+  <video src="submission/fluxreel_demo.mp4" controls width="420">
     Your browser does not support embedded video.
-    <a href="submission/fluxreel.mp4">Download fluxreel.mp4</a>
+    <a href="submission/fluxreel_demo.mp4">Download fluxreel_demo.mp4</a>
   </video>
 </p>
 
